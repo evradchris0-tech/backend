@@ -1,9 +1,11 @@
+// services/building-service/src/infrastructure/persistence/repositories/typeorm-space.repository.ts
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ISpaceRepository } from '../../../domain/repositories/space.repository.interface.ts';
+import { ISpaceRepository } from '../../../domain/repositories/space.repository.interface';
 import { SpaceEntity } from '../../../domain/entities/space.entity';
-import { SpaceType } from '../../../domain/enums/space-type.enum.ts';
+import { SpaceType } from '../../../domain/enums/space-type.enum';
 
 @Injectable()
 export class TypeOrmSpaceRepository implements ISpaceRepository {
@@ -13,11 +15,21 @@ export class TypeOrmSpaceRepository implements ISpaceRepository {
     ) { }
 
     async save(space: SpaceEntity): Promise<SpaceEntity> {
-        return this.repository.save(space);
+        try {
+            return await this.repository.save(space);
+        } catch (error) {
+            if (error.code === '23505') {
+                throw new Error('Space number already exists on this floor');
+            }
+            throw error;
+        }
     }
 
     async findById(id: string): Promise<SpaceEntity | null> {
-        return this.repository.findOne({ where: { id }, relations: ['floor'] });
+        return this.repository.findOne({
+            where: { id },
+            relations: ['floor']
+        });
     }
 
     async findByFloorId(floorId: string): Promise<SpaceEntity[]> {
@@ -28,19 +40,45 @@ export class TypeOrmSpaceRepository implements ISpaceRepository {
     }
 
     async findByBuildingId(buildingId: string): Promise<SpaceEntity[]> {
-        return this.repository.find({ where: { buildingId } });
+        return this.repository.find({
+            where: { buildingId },
+            order: { number: 'ASC' }
+        });
     }
 
     async findByNumber(number: string, floorId: string): Promise<SpaceEntity | null> {
-        return this.repository.findOne({ where: { number, floorId } });
+        return this.repository.findOne({
+            where: { number, floorId }
+        });
     }
 
-    // Optimisé pour la 3D : on sélectionne uniquement les champs nécessaires
+    // ✅ MÉTHODE OPTIMISÉE pour BabylonJS : sélection partielle des colonnes
     async findWithBabylonConfig(buildingId: string): Promise<SpaceEntity[]> {
-        return this.repository.find({
-            where: { buildingId },
-            select: ['id', 'number', 'type', 'status', 'babylonConfig', 'floorId']
-        });
+        return this.repository
+            .createQueryBuilder('space')
+            .select([
+                'space.id',
+                'space.number',
+                'space.type',
+                'space.status',
+                'space.babylonConfig',
+                'space.floorId'
+            ])
+            .where('space.buildingId = :buildingId', { buildingId })
+            .orderBy('space.floorId', 'ASC')
+            .addOrderBy('space.number', 'ASC')
+            .getMany();
+    }
+
+    // ✅ Recherche par type et capacité
+    async findByTypeAndCapacity(type: SpaceType, minCapacity: number): Promise<SpaceEntity[]> {
+        return this.repository
+            .createQueryBuilder('space')
+            .where('space.type = :type', { type })
+            .andWhere('space.capacity >= :minCapacity', { minCapacity })
+            .orderBy('space.capacity', 'DESC')
+            .addOrderBy('space.number', 'ASC')
+            .getMany();
     }
 
     async delete(id: string): Promise<void> {
@@ -48,78 +86,109 @@ export class TypeOrmSpaceRepository implements ISpaceRepository {
     }
 
     async update(id: string, space: SpaceEntity): Promise<SpaceEntity> {
-        return this.repository.save(space);
+        await this.repository.update(id, space);
+        const updatedSpace = await this.findById(id);
+        if (!updatedSpace) {
+            throw new Error('Space not found after update');
+        }
+        return updatedSpace;
     }
-    
+
+    // ✅ MÉTHODE CORRIGÉE : Recherche des espaces à proximité
+    async findNearby(
+        referenceSpaceId: string,
+        radiusMeters: number
+    ): Promise<SpaceEntity[]> {
+        const referenceSpace = await this.findById(referenceSpaceId);
+        if (!referenceSpace || !referenceSpace.coordinates) {
+            return [];
+        }
+
+        const refX = referenceSpace.coordinates['x'];
+        const refY = referenceSpace.coordinates['y'];
+
+        // Requête avec calcul de distance Euclidienne
+        return this.repository
+            .createQueryBuilder('space')
+            .where('space.buildingId = :buildingId', {
+                buildingId: referenceSpace.buildingId
+            })
+            .andWhere('space.floorId = :floorId', {
+                floorId: referenceSpace.floorId
+            })
+            .andWhere('space.id != :id', {
+                id: referenceSpaceId
+            })
+            .andWhere(SQRT(POWER((space.coordinates ->> 'x'):: float - : refX, 2) + POWER((space.coordinates ->> 'y'):: float - : refY, 2)) <= : radius, { refX, refY, radius: radiusMeters })
+            .orderBy(SQRT(POWER((space.coordinates ->> 'x'):: float - : refX, 2) + POWER((space.coordinates ->> 'y'):: float - : refY, 2)), 'ASC')
+            .getMany();
+    }
+
+    async delete(id: string): Promise<void> {
+        await this.repository.delete(id);
+    }
+
+    async update(id: string, space: SpaceEntity): Promise<SpaceEntity> {
+        await this.repository.save(space);
+        return this.findById(id);
+    }
+
     async updateStatus(id: string, status: string): Promise<SpaceEntity> {
-        const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
-        space.status = status;
-        return this.repository.save(space);
+        await this.repository.update(id, { status });
+        return this.findById(id);
     }
-    
+
     async updateCapacity(id: string, capacity: number): Promise<SpaceEntity> {
-        const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
-        space.capacity = capacity;
-        return this.repository.save(space);
+        await this.repository.update(id, { capacity });
+        return this.findById(id);
     }
-    
+
     async updateSurfaceArea(id: string, surfaceArea: number): Promise<SpaceEntity> {
-        const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
-        space.surfaceArea = surfaceArea;
-        return this.repository.save(space);
+        await this.repository.update(id, { surfaceArea });
+        return this.findById(id);
     }
-    
+
     async updateBabylonConfig(id: string, babylonConfig: Record<string, any>): Promise<SpaceEntity> {
-        const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
-        space.babylonConfig = babylonConfig;
-        return this.repository.save(space);
+        await this.repository.update(id, { babylonConfig });
+        return this.findById(id);
     }
-    
+
     async updateFeatures(id: string, features: Record<string, any>): Promise<SpaceEntity> {
-        const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
-        space.features = features;
-        return this.repository.save(space);
+        await this.repository.update(id, { features });
+        return this.findById(id);
     }
 
     async updateType(id: string, type: SpaceType): Promise<SpaceEntity> {
-        const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
-        space.type = type;
-        return this.repository.save(space);
+        await this.repository.update(id, { type });
+        return this.findById(id);
     }
 
     async updateFloorId(id: string, floorId: string): Promise<SpaceEntity> {
-        const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
-        space.floorId = floorId;
-        return this.repository.save(space);
+        await this.repository.update(id, { floorId });
+        return this.findById(id);
     }
-    
+
     async updateName(id: string, name: string): Promise<SpaceEntity> {
-        const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
-        space.name = name;
-        return this.repository.save(space);
+        await this.repository.update(id, { name });
+        return this.findById(id);
     }
 
     async updateNumber(id: string, number: string): Promise<SpaceEntity> {
-        const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
-        space.number = number;
-        return this.repository.save(space);
+        await this.repository.update(id, { number });
+        return this.findById(id);
     }
-    
+
     async updateDescription(id: string, description: string): Promise<SpaceEntity> {
         const space = await this.findById(id);
         if (!space) throw new Error('Space not found');
-        // Assuming there's a description field
-        (space as any).description = description;
-        return this.repository.save(space);
+
+        const updatedMetadata = {
+            ...(space.metadata || {}),
+            description
+        };
+
+        await this.repository.update(id, { metadata: updatedMetadata });
+        return this.findById(id);
     }
 
     async updateStatusByIds(ids: string[], status: string): Promise<void> {

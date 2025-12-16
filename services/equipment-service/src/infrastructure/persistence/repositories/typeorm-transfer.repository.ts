@@ -1,3 +1,5 @@
+// services/equipment-service/src/infrastructure/persistence/repositories/typeorm-transfer.repository.ts
+
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -18,7 +20,8 @@ export class TypeOrmTransferRepository implements ITransferRepository {
     async findByEquipmentId(equipmentId: string): Promise<EquipmentTransferEntity[]> {
         return this.repository.find({
             where: { equipmentId },
-            order: { transferDate: 'DESC' }
+            order: { transferDate: 'DESC' },
+            relations: ['equipment'],
         });
     }
 
@@ -26,7 +29,33 @@ export class TypeOrmTransferRepository implements ITransferRepository {
         return this.repository.find({
             order: { transferDate: 'DESC' },
             take: limit,
-            relations: ['equipment']
+            relations: ['equipment'],
+        });
+    }
+
+    async findByDateRange(startDate: Date, endDate: Date): Promise<EquipmentTransferEntity[]> {
+        return this.repository
+            .createQueryBuilder('transfer')
+            .where('transfer.transferDate BETWEEN :startDate AND :endDate', {
+                startDate,
+                endDate
+            })
+            .leftJoinAndSelect('transfer.equipment', 'equipment')
+            .orderBy('transfer.transferDate', 'DESC')
+            .getMany();
+    }
+
+    async findByPerformedBy(userId: string): Promise<EquipmentTransferEntity[]> {
+        return this.repository.find({
+            where: { performedBy: userId },
+            order: { transferDate: 'DESC' },
+            relations: ['equipment'],
+        });
+    }
+
+    async countByEquipment(equipmentId: string): Promise<number> {
+        return this.repository.count({
+            where: { equipmentId },
         });
     }
 }
