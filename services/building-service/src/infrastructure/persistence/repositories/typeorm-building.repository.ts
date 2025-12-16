@@ -1,6 +1,6 @@
 // services/building-service/src/infrastructure/persistence/repositories/typeorm-building.repository.ts
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IBuildingRepository } from '../../../domain/repositories/building.repository.interface';
@@ -17,7 +17,6 @@ export class TypeOrmBuildingRepository implements IBuildingRepository {
         try {
             return await this.repository.save(building);
         } catch (error) {
-            // Gérer erreur de doublon PostgreSQL (code 23505)
             if (error.code === '23505') {
                 throw new Error('Building code already exists for this site');
             }
@@ -53,7 +52,7 @@ export class TypeOrmBuildingRepository implements IBuildingRepository {
         });
     }
 
-    // ✅ MÉTHODE MANQUANTE IMPLÉMENTÉE
+    // ✅ CORRECTION: Implémentation manquante
     async exists(code: string, siteId: string): Promise<boolean> {
         const count = await this.repository.count({
             where: { code, siteId }
@@ -61,6 +60,7 @@ export class TypeOrmBuildingRepository implements IBuildingRepository {
         return count > 0;
     }
 
+    // ✅ AJOUT: Méthode utilitaire pour charger avec toutes relations
     async findWithRelations(id: string): Promise<BuildingEntity | null> {
         return this.repository
             .createQueryBuilder('building')
@@ -72,14 +72,22 @@ export class TypeOrmBuildingRepository implements IBuildingRepository {
     }
 
     async delete(id: string): Promise<void> {
-        await this.repository.delete(id);
+        const result = await this.repository.delete(id);
+        if (result.affected === 0) {
+            throw new NotFoundException(`Building with ID ${id} not found`);
+        }
     }
 
     async update(id: string, building: BuildingEntity): Promise<BuildingEntity> {
         await this.repository.update(id, building);
-        return this.findById(id);
+        const updated = await this.findById(id);
+        if (!updated) {
+            throw new NotFoundException(`Building with ID ${id} not found`);
+        }
+        return updated;
     }
 
+    // ✅ Méthodes supplémentaires de l'interface
     async updateStatus(id: string, status: string): Promise<BuildingEntity> {
         await this.repository.update(id, { status });
         return this.findById(id);
@@ -129,9 +137,8 @@ export class TypeOrmBuildingRepository implements IBuildingRepository {
     }
 
     async updateDescription(id: string, description: string): Promise<BuildingEntity> {
-        // Cette méthode suppose qu'il y a un champ description dans metadata
         const building = await this.findById(id);
-        if (!building) throw new Error('Building not found');
+        if (!building) throw new NotFoundException('Building not found');
 
         const updatedMetadata = {
             ...building.metadata,

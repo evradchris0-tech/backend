@@ -4,8 +4,6 @@ import { CreateSpaceDto } from '../dtos/create-space.dto';
 import { SpaceMapDto } from '../dtos/space-map.dto';
 import { SpaceEntity } from '../../domain/entities/space.entity';
 import { SpaceMapper } from '../mappers/space.mapper';
-// Note: Idéalement, on injecterait IFloorRepository pour valider l'existence de l'étage
-// mais pour ce MVP, on suppose que le frontend envoie un floorId valide.
 
 @Injectable()
 export class SpaceService {
@@ -29,10 +27,10 @@ export class SpaceService {
         space.type = dto.type;
         space.capacity = dto.capacity;
         space.surfaceArea = dto.surfaceArea;
-        space.babylonConfig = dto.babylonConfig; // Configuration 3D
+        space.babylonConfig = dto.babylonConfig;
         space.features = dto.features;
 
-        // IMPORTANT : On doit aussi peupler le buildingId (denormalized). 
+        // IMPORTANT : On doit aussi peupler le buildingId (denormalized).
         // Dans une implémentation complète, on récupérerait le Floor pour obtenir son buildingId.
         // Pour l'instant, on laisse la base de données gérer via Trigger ou on l'ajoute plus tard.
         // space.buildingId = floor.buildingId; 
@@ -41,8 +39,6 @@ export class SpaceService {
         return SpaceMapper.toMapDto(savedSpace);
     }
 
-    // C'est LA méthode critique pour BabylonJS
-    // Elle doit être ultra-rapide
     async getBuildingMapData(buildingId: string): Promise<SpaceMapDto[]> {
         // Utilise la méthode optimisée du repository (select partiel)
         const spaces = await this.spaceRepo.findWithBabylonConfig(buildingId);

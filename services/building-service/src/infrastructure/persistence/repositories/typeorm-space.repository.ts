@@ -1,6 +1,6 @@
 // services/building-service/src/infrastructure/persistence/repositories/typeorm-space.repository.ts
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ISpaceRepository } from '../../../domain/repositories/space.repository.interface';
@@ -52,7 +52,7 @@ export class TypeOrmSpaceRepository implements ISpaceRepository {
         });
     }
 
-    // ✅ MÉTHODE OPTIMISÉE pour BabylonJS : sélection partielle des colonnes
+    // ✅ CORRECTION: Optimisé pour BabylonJS (sélection partielle)
     async findWithBabylonConfig(buildingId: string): Promise<SpaceEntity[]> {
         return this.repository
             .createQueryBuilder('space')
@@ -70,67 +70,20 @@ export class TypeOrmSpaceRepository implements ISpaceRepository {
             .getMany();
     }
 
-    // ✅ Recherche par type et capacité
-    async findByTypeAndCapacity(type: SpaceType, minCapacity: number): Promise<SpaceEntity[]> {
-        return this.repository
-            .createQueryBuilder('space')
-            .where('space.type = :type', { type })
-            .andWhere('space.capacity >= :minCapacity', { minCapacity })
-            .orderBy('space.capacity', 'DESC')
-            .addOrderBy('space.number', 'ASC')
-            .getMany();
-    }
-
     async delete(id: string): Promise<void> {
-        await this.repository.delete(id);
-    }
-
-    async update(id: string, space: SpaceEntity): Promise<SpaceEntity> {
-        await this.repository.update(id, space);
-        const updatedSpace = await this.findById(id);
-        if (!updatedSpace) {
-            throw new Error('Space not found after update');
+        const result = await this.repository.delete(id);
+        if (result.affected === 0) {
+            throw new NotFoundException(`Space with ID ${id} not found`);
         }
-        return updatedSpace;
-    }
-
-    // ✅ MÉTHODE CORRIGÉE : Recherche des espaces à proximité
-    async findNearby(
-        referenceSpaceId: string,
-        radiusMeters: number
-    ): Promise<SpaceEntity[]> {
-        const referenceSpace = await this.findById(referenceSpaceId);
-        if (!referenceSpace || !referenceSpace.coordinates) {
-            return [];
-        }
-
-        const refX = referenceSpace.coordinates['x'];
-        const refY = referenceSpace.coordinates['y'];
-
-        // Requête avec calcul de distance Euclidienne
-        return this.repository
-            .createQueryBuilder('space')
-            .where('space.buildingId = :buildingId', {
-                buildingId: referenceSpace.buildingId
-            })
-            .andWhere('space.floorId = :floorId', {
-                floorId: referenceSpace.floorId
-            })
-            .andWhere('space.id != :id', {
-                id: referenceSpaceId
-            })
-            .andWhere(SQRT(POWER((space.coordinates ->> 'x'):: float - : refX, 2) + POWER((space.coordinates ->> 'y'):: float - : refY, 2)) <= : radius, { refX, refY, radius: radiusMeters })
-            .orderBy(SQRT(POWER((space.coordinates ->> 'x'):: float - : refX, 2) + POWER((space.coordinates ->> 'y'):: float - : refY, 2)), 'ASC')
-            .getMany();
-    }
-
-    async delete(id: string): Promise<void> {
-        await this.repository.delete(id);
     }
 
     async update(id: string, space: SpaceEntity): Promise<SpaceEntity> {
         await this.repository.save(space);
-        return this.findById(id);
+        const updated = await this.findById(id);
+        if (!updated) {
+            throw new NotFoundException(`Space with ID ${id} not found`);
+        }
+        return updated;
     }
 
     async updateStatus(id: string, status: string): Promise<SpaceEntity> {
@@ -180,7 +133,7 @@ export class TypeOrmSpaceRepository implements ISpaceRepository {
 
     async updateDescription(id: string, description: string): Promise<SpaceEntity> {
         const space = await this.findById(id);
-        if (!space) throw new Error('Space not found');
+        if (!space) throw new NotFoundException('Space not found');
 
         const updatedMetadata = {
             ...(space.metadata || {}),

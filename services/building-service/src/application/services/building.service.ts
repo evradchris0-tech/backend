@@ -13,7 +13,6 @@ export class BuildingService {
     ) { }
 
     async create(dto: CreateBuildingDto): Promise<BuildingResponseDto> {
-        // 1. Vérification d'unicité (Code Bâtiment unique par Site)
         const exists = await this.buildingRepo.exists(dto.code, dto.siteId);
         if (exists) {
             throw new ConflictException(`Building with code '${dto.code}' already exists on this site.`);
@@ -26,7 +25,7 @@ export class BuildingService {
         building.code = dto.code;
         building.type = dto.type;
         building.floorsCount = dto.floorsCount;
-        building.locationData = dto.locationData; // JSON pour BabylonJS
+        building.locationData = dto.locationData;
         building.metadata = dto.metadata;
 
         // 3. Sauvegarde

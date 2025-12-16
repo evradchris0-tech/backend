@@ -1,0 +1,158 @@
+### ============================================
+### BUILDING-SERVICE - TESTS FONCTIONNELS
+### Port: 4004
+### ============================================
+
+@baseUrl = http://localhost:4004
+@buildingId = SERA_REMPLACE_APRES_CREATION
+@siteId = SERA_REMPLACE_APRES_CREATION
+
+### ============================================
+### PHASE 1: VÉRIFICATION SANTÉ SERVICE
+### ============================================
+
+### Health Check
+GET {{baseUrl}}/health
+
+### ============================================
+### PHASE 2: CRÉATION D'UN SITE (Prérequis)
+### ============================================
+
+### Créer un site
+# @name createSite
+POST {{baseUrl}}/sites
+Content-Type: application/json
+
+{
+  "name": "Campus Eyang",
+  "address": "Rue de l'Université",
+  "city": "Yaoundé",
+  "country": "Cameroun",
+  "latitude": 3.8480,
+  "longitude": 11.5021,
+  "status": "ACTIVE"
+}
+
+### Récupérer tous les sites
+GET {{baseUrl}}/sites
+
+### ============================================
+### PHASE 3: CRÉATION D'UN BÂTIMENT (Use Case Principal)
+### ============================================
+
+### Créer un bâtiment
+# @name createBuilding
+POST {{baseUrl}}/buildings
+Content-Type: application/json
+
+{
+  "siteId": "{{$guid}}",
+  "name": "Bâtiment A - Pédagogique",
+  "code": "BAT-A",
+  "type": "PEDAGOGICAL",
+  "floorsCount": 3,
+  "locationData": {
+    "x": 10.5,
+    "y": 0,
+    "z": 20.3,
+    "rotation": 45
+  },
+  "metadata": {
+    "constructionYear": 2020,
+    "surfaceArea": 1500,
+    "accessibility": true
+  }
+}
+
+### ============================================
+### PHASE 4: VALIDATION RÈGLES MÉTIER
+### ============================================
+
+### ❌ Tentative création doublon (doit échouer avec 409 Conflict)
+POST {{baseUrl}}/buildings
+Content-Type: application/json
+
+{
+  "siteId": "{{siteId}}",
+  "name": "Bâtiment B",
+  "code": "BAT-A",
+  "type": "ADMINISTRATIVE",
+  "floorsCount": 2
+}
+
+### ✅ Création avec code différent (doit réussir)
+POST {{baseUrl}}/buildings
+Content-Type: application/json
+
+{
+  "siteId": "{{siteId}}",
+  "name": "Bâtiment B - Administratif",
+  "code": "BAT-B",
+  "type": "ADMINISTRATIVE",
+  "floorsCount": 2,
+  "totalCapacity": 150
+}
+
+### ============================================
+### PHASE 5: LECTURE & RÉCUPÉRATION
+### ============================================
+
+### Récupérer un bâtiment par ID
+GET {{baseUrl}}/buildings/{{buildingId}}
+
+### Récupérer tous les bâtiments
+GET {{baseUrl}}/buildings
+
+### Récupérer les bâtiments d'un site spécifique
+GET {{baseUrl}}/buildings/site/{{siteId}}
+
+### ============================================
+### PHASE 6: VALIDATION GESTION D'ERREURS
+### ============================================
+
+### ❌ Récupérer bâtiment inexistant (doit retourner 404)
+GET {{baseUrl}}/buildings/00000000-0000-0000-0000-000000000000
+
+### ❌ Créer bâtiment avec site inexistant (doit retourner 404 ou 400)
+POST {{baseUrl}}/buildings
+Content-Type: application/json
+
+{
+  "siteId": "00000000-0000-0000-0000-000000000000",
+  "name": "Test",
+  "code": "TEST",
+  "type": "MIXED",
+  "floorsCount": 1
+}
+
+### ============================================
+### PHASE 7: SUPPRESSION
+### ============================================
+
+### Supprimer un bâtiment
+DELETE {{baseUrl}}/buildings/{{buildingId}}
+
+### Vérifier suppression (doit retourner 404)
+GET {{baseUrl}}/buildings/{{buildingId}}
+
+### ============================================
+### LOGS ATTENDUS DANS LE SERVICE
+### ============================================
+# ✅ [BuildingController] POST /buildings
+# ✅ [BuildingService] Creating building with code BAT-A
+# ✅ [TypeOrmBuildingRepository] Checking if code exists
+# ✅ [TypeOrmBuildingRepository] Saving building
+# ✅ [BuildingMapper] Mapping entity to DTO
+# ✅ [BuildingController] Building created: {id}
+
+### ============================================
+### RÉSULTATS ATTENDUS
+### ============================================
+# 1. Création site → 201 Created avec ID site
+# 2. Création bâtiment → 201 Created avec code généré BAT-A
+# 3. Tentative doublon → 409 Conflict
+# 4. GET bâtiment → 200 OK avec toutes données
+# 5. GET liste → 200 OK avec tableau
+# 6. GET inexistant → 404 Not Found
+# 7. DELETE → 200 OK
+# 8. Vérification suppression → 404 Not Found
