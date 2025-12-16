@@ -1,0 +1,451 @@
+### Variables
+@base_url = http://localhost:3001
+@access_token =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInJvbGUiOiJTVVBFUkFETUlOIiwic2Vzc2lvbklkIjoiNGRhZWVhNjctNDA1Ny00OGMxLTk4MWYtMDExMTE0YTZjZDhmIiwiaWF0IjoxNzY0NTg0NTkwLCJleHAiOjE3NjQ1OTE3OTB9.MODgOj0C72X_4jQT2rwtz0P9H76oqooTESbrdsBmG3A
+@refresh_token =eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInJvbGUiOiJTVVBFUkFETUlOIiwic2Vzc2lvbklkIjoiNGRhZWVhNjctNDA1Ny00OGMxLTk4MWYtMDExMTE0YTZjZDhmIiwiaWF0IjoxNzY0NTg0NTkwLCJleHAiOjE3NjUxODkzOTB9.4BM1MAYabpZWQGvyAmuob4GZ3OgTHZHz913YrqwLekI
+"sessionToken": "35b498d9-697a-4c64-b406-4866a094b154",
+"id": "186a35c1-f54f-458d-8f39-b0ea615a4164",
+###############################################################################
+# AUTH ENDPOINTS
+###############################################################################
+
+### 1. Login SUPERADMIN
+# @name login
+POST {{base_url}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "superadmin@immo360.cm",
+  "password": "NewSuperAdmin456!"
+}
+
+### 2. Get Current User
+GET {{base_url}}/auth/me
+Authorization: Bearer {{access_token}}
+
+### 3. Refresh Token
+POST {{base_url}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refresh_token}}"
+}
+
+### 4. Change Password
+PATCH {{base_url}}/auth/change-password
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "SuperAdmin123!",
+  "newPassword": "NewSuperAdmin456!"
+}
+
+### 5. Logout
+POST {{base_url}}/auth/logout
+Authorization: Bearer {{access_token}}
+
+### 6. Verify Email
+POST {{base_url}}/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "dmdstream3@gmail.com",
+  "code": "ABC123"
+}
+
+### 7. Resend Verification Code
+POST {{base_url}}/auth/resend-verification-code
+Content-Type: application/json
+
+{
+  "email": "chrisomgba04@gmail.com"
+}
+
+### 8. Google Token Login
+POST {{base_url}}/auth/google/token-login
+Content-Type: application/json
+
+{
+  "idToken": "PASTE_YOUR_GOOGLE_ID_TOKEN_HERE"
+}
+
+###############################################################################
+# USER MANAGEMENT ENDPOINTS
+###############################################################################
+
+### 9. Create Administrator
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "admin@immo360.cm",
+  "firstName": "Admin",
+  "lastName": "Principal",
+  "role": "ADMINISTRATOR"
+}
+
+### 10. Create Supervisor
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "josephchrisevrad@gmail.com",
+  "firstName": "Superviseur",
+  "lastName": "Principal",
+  "role": "SUPERVISOR"
+}
+
+### 11. Create Agent Terrain
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "agent@immo360.cm",
+  "firstName": "Agent",
+  "lastName": "Terrain",
+  "role": "AGENT_TERRAIN"
+}
+
+### 12.1 Create Occupant (Cité Universitaire - Chambre 205)
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "occupant.jean@immo360.cm",
+  "firstName": "Jean",
+  "lastName": "Dupont",
+  "role": "OCCUPANT",
+  "roomId": "CITE-205",
+  "roomNumber": "205",
+  "academicSessionId": "2025-2026"
+}
+
+### 12.2 Create Occupant (RDC - Chambre 101)
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "occupant.marie@immo360.cm",
+  "firstName": "Marie",
+  "lastName": "Martin",
+  "role": "OCCUPANT",
+  "roomId": "RDC-101",
+  "roomNumber": "101",
+  "academicSessionId": "2025-2026"
+}
+
+### 12.3 Create Occupant (Étage 1 - Chambre 110)
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "occupant.pierre@immo360.cm",
+  "firstName": "Pierre",
+  "lastName": "Leblanc",
+  "role": "OCCUPANT",
+  "roomId": "ETAGE1-110",
+  "roomNumber": "110",
+  "academicSessionId": "2025-2026"
+}
+
+### 12.4 Create Occupant (Étage 2 - Chambre 236)
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "occupant.sophie@immo360.cm",
+  "firstName": "Sophie",
+  "lastName": "Durand",
+  "role": "OCCUPANT",
+  "roomId": "ETAGE2-236",
+  "roomNumber": "236",
+  "academicSessionId": "2025-2026"
+}
+
+### 13. Get Users (All - Page 1)
+GET {{base_url}}/users?page=1&limit=10
+Authorization: Bearer {{access_token}}
+
+### 14. Get Users (Page 2)
+GET {{base_url}}/users?page=2&limit=5
+Authorization: Bearer {{access_token}}
+
+### 15. Get Users (Filtered by ADMINISTRATOR)
+GET {{base_url}}/users?page=1&limit=10&role=ADMINISTRATOR
+Authorization: Bearer {{access_token}}
+
+### 16. Get Users (Filtered by OCCUPANT)
+GET {{base_url}}/users?page=1&limit=10&role=OCCUPANT
+Authorization: Bearer {{access_token}}
+
+### 17. Get Users (Filtered by AGENT_TERRAIN)
+GET {{base_url}}/users?page=1&limit=10&role=AGENT_TERRAIN
+Authorization: Bearer {{access_token}}
+
+### 18. Get Users (Filtered by ACTIVE status)
+GET {{base_url}}/users?page=1&limit=10&status=ACTIVE
+Authorization: Bearer {{access_token}}
+
+### 19. Get Users (Filtered by PENDING_EMAIL_VERIFICATION status)
+GET {{base_url}}/users?page=1&limit=10&status=PENDING_EMAIL_VERIFICATION
+Authorization: Bearer {{access_token}}
+
+### 20. Get Users (Search by name "admin")
+GET {{base_url}}/users?page=1&limit=10&search=admin
+Authorization: Bearer {{access_token}}
+
+### 21. Get Users (Search by email "occupant")
+GET {{base_url}}/users?page=1&limit=10&search=occupant
+Authorization: Bearer {{access_token}}
+
+### 22. Get Users (Multiple filters: OCCUPANT + Search)
+GET {{base_url}}/users?page=1&limit=10&role=OCCUPANT&search=jean
+Authorization: Bearer {{access_token}}
+
+### 23. Get User By ID (⚠️ Remplacer par un vrai ID)
+GET {{base_url}}/users/186a35c1-f54f-458d-8f39-b0ea615a4164
+Authorization: Bearer {{access_token}}
+
+### 24. Update User - Change Name
+PATCH {{base_url}}/users/186a35c1-f54f-458d-8f39-b0ea615a4164
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "firstName": "SuperUpdated",
+  "lastName": "AdminUpdated"
+}
+
+### 25. Update User - Change Role (SUPERADMIN only)
+PATCH {{base_url}}/users/USER_ID_HERE
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "role": "SUPERVISOR"
+}
+
+### 26. Update User - Activate Account
+PATCH {{base_url}}/users/c9ab53da-8a66-4cf6-93af-dbc68b7b8ead
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+### 27. Update User - Deactivate Account
+PATCH {{base_url}}/users/USER_ID_HERE
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "status": "INACTIVE"
+}
+
+### 28. Delete User (Soft Delete)
+DELETE {{base_url}}/users/c9ab53da-8a66-4cf6-93af-dbc68b7b8ead
+Authorization: Bearer {{access_token}}
+
+### 29. Assign Room to Occupant
+PATCH {{base_url}}/users/USER_ID_HERE/assign-room
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "roomId": "ETAGE2-305",
+  "roomNumber": "305",
+  "academicSessionId": "2025-2026"
+}
+
+### 30. Reassign Occupant to New Room (Change room)
+PATCH {{base_url}}/users/USER_ID_HERE/assign-room
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "roomId": "CITE-412",
+  "roomNumber": "412",
+  "academicSessionId": "2025-2026"
+}
+
+### 31. Download Import Template (Excel)
+GET {{base_url}}/users/import/template
+Authorization: Bearer {{access_token}}
+
+### 32. Import Occupants via Excel
+# ⚠️ NOTE: Use Postman, Thunder Client, or cURL for multipart/form-data
+# POST {{base_url}}/users/import/occupants
+# Authorization: Bearer {{access_token}}
+# Content-Type: multipart/form-data
+#
+# Form fields:
+# - file: @path/to/occupants.xlsx
+# - academicSessionId: 2025-2026
+
+###############################################################################
+# EXAMPLES CURL (For file upload)
+###############################################################################
+
+# Import Occupants via cURL
+# curl -X POST http://localhost:3001/users/import/occupants \
+#   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+#   -F "file=@/path/to/occupants.xlsx" \
+#   -F "academicSessionId=2025-2026"
+
+###############################################################################
+# TESTS SCENARIOS
+###############################################################################
+
+### SCENARIO 1: Complete User Lifecycle
+# 1. Login as SUPERADMIN
+# 2. Create new ADMINISTRATOR
+# 3. Get verification code from logs
+# 4. Verify email
+# 5. Login with new ADMINISTRATOR
+# 6. Create AGENT_TERRAIN
+# 7. Create OCCUPANT with room assignment
+
+### SCENARIO 2: Occupant Room Management
+# 1. Create OCCUPANT with room CITE-205
+# 2. Get user details (verify currentRoomId)
+# 3. Reassign to new room ETAGE2-310
+# 4. Get user details again (verify room change)
+
+### SCENARIO 3: User Search and Filter
+# 1. Create multiple users (ADMIN, AGENT, OCCUPANT)
+# 2. Get all users paginated
+# 3. Filter by role OCCUPANT
+# 4. Search by name "Jean"
+# 5. Combine filters (OCCUPANT + search)
+
+### SCENARIO 4: Account Status Management
+# 1. Create new user
+# 2. Activate account manually (PATCH status=ACTIVE)
+# 3. Deactivate account (PATCH status=INACTIVE)
+# 4. Try to login (should fail)
+# 5. Reactivate account
+# 6. Login successfully
+
+###############################################################################
+# IMPORTANT NOTES
+###############################################################################
+
+# 📌 ROOM ID FORMAT (VARCHAR):
+# - RDC-101 (Rez-de-chaussée, chambre 101)
+# - ETAGE1-205 (Étage 1, chambre 205)
+# - ETAGE2-305 (Étage 2, chambre 305)
+# - CITE-205 (Cité universitaire, chambre 205)
+# - BATIMENT-A-101 (Bâtiment A, chambre 101)
+
+# 📌 ACADEMIC SESSION FORMAT (VARCHAR):
+# - Must match regex: ^\d{4}-\d{4}$
+# - Examples: 2025-2026, 2026-2027, 2024-2025
+
+# 📌 USERNAME GENERATION (OCCUPANT only):
+# - Auto-generated from: firstName + roomNumber
+# - Example: "Jean" + room "205" = username "Jean205"
+# - Unique constraint enforced
+
+# 📌 TEMPORARY PASSWORDS:
+# - Generated automatically (16 characters)
+# - Visible in API response field: "temporaryPassword"
+# - Also logged in console if SMTP_ENABLED=false
+
+# 📌 EMAIL VERIFICATION:
+# - Code generated automatically (6 characters, alphanumeric uppercase)
+# - Valid for 24 hours
+# - Logged in console if SMTP_ENABLED=false
+
+# 📌 ROLE HIERARCHY (Who can create who):
+# - SUPERADMIN → can create ALL roles (including other SUPERADMIN)
+# - ADMINISTRATOR → can create SUPERVISOR, AGENT_TERRAIN, OCCUPANT
+# - Others → cannot create users
+
+# 📌 STATUS VALUES:
+# - ACTIVE: User can login
+# - INACTIVE: User cannot login (soft deleted)
+# - LOCKED: User temporarily locked (too many failed attempts)
+# - PENDING_EMAIL_VERIFICATION: User must verify email before first login
+
+# 📌 PAGINATION:
+# - Default page: 1
+# - Default limit: 10
+# - Max limit: 100
+
+###############################################################################
+# ERROR CODES REFERENCE
+###############################################################################
+
+# 200 OK - Request successful
+# 201 Created - Resource created successfully
+# 204 No Content - Request successful, no response body
+# 400 Bad Request - Invalid input data
+# 401 Unauthorized - Authentication required or failed
+# 403 Forbidden - Insufficient permissions
+# 404 Not Found - Resource not found
+# 409 Conflict - Duplicate resource (email, username)
+# 500 Internal Server Error - Server error
+
+###############################################################################
+# QUICK START GUIDE
+###############################################################################
+
+# Step 1: Login as SUPERADMIN
+# Use endpoint #1 with default credentials
+
+# Step 2: Copy accessToken from response
+# Update @access_token variable at the top
+
+# Step 3: Create your first ADMINISTRATOR
+# Use endpoint #9
+
+# Step 4: Check server logs for temporaryPassword
+# Example log: ⚠️ Email disabled - Temporary password: Xyz789!Abc123$
+
+# Step 5: Create OCCUPANT users
+# Use endpoints #12.1, #12.2, #12.3, #12.4
+# Make sure to use correct roomId format (VARCHAR, not UUID)
+
+# Step 6: List and filter users
+# Use endpoints #13-#22
+
+# Step 7: Import bulk occupants via Excel
+# Download template: endpoint #31
+# Fill template and import: see cURL example above
+
+###############################################################################
+# TROUBLESHOOTING
+###############################################################################
+
+# ❌ Error: "syntaxe en entrée invalide pour le type uuid"
+# Solution: roomId is VARCHAR now, not UUID. Use format like "RDC-101"
+
+# ❌ Error: "Academic session must be in format YYYY-YYYY"
+# Solution: Use format "2025-2026" (not "2025" or "2025/2026")
+
+# ❌ Error: "OCCUPANT users must be assigned to a room"
+# Solution: Provide roomId, roomNumber, and academicSessionId for OCCUPANT
+
+# ❌ Error: "Email already exists"
+# Solution: Use a different email or delete the existing user first
+
+# ❌ Error: "You do not have permission to create users with role SUPERADMIN"
+# Solution: Only SUPERADMIN can create other SUPERADMIN users
+
+# ❌ Error: "Failed to send email: connect ECONNREFUSED"
+# Solution: This is normal if SMTP_ENABLED=false. Check server logs for credentials
+
+# ❌ Error: "Token expired"
+# Solution: Use endpoint #3 (Refresh Token) or login again (#1)
+
+###############################################################################
+# END OF FILE
+###############################################################################

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(find:*)",
+      "Bash(npm run build:*)",
+      "Bash(cat:*)",
+      "Bash(test:*)",
+      "Bash(chmod:*)",
+      "Bash(node scripts/generate-secrets.js:*)",
+      "Bash(ls:*)"
+    ]
+  }
+}

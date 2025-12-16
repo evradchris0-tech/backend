@@ -1,0 +1,597 @@
+version: '3.8'
+
+# IMMO360 Global Docker Compose
+# This file orchestrates all microservices together
+
+services:
+  # ==========================================
+  # INFRASTRUCTURE SERVICES
+  # ==========================================
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: immo360-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-dbs.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: immo360-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: immo360-rabbitmq
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=immo360
+      - RABBITMQ_DEFAULT_PASS=immo360
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ==========================================
+  # API GATEWAY
+  # ==========================================
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-api-gateway
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - HOST=0.0.0.0
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      # Services URLs
+      - AUTH_SERVICE_URL=http://auth-service:4001
+      - USER_SERVICE_URL=http://user-service:4002
+      - INFRASTRUCTURE_SERVICE_URL=http://infrastructure-service:4003
+      - EQUIPMENT_SERVICE_URL=http://equipment-service:4004
+      - INCIDENTS_SERVICE_URL=http://incidents-service:4005
+      - AUDIT_SERVICE_URL=http://audit-service:4006
+      - ANALYTICS_SERVICE_URL=http://analytics-service:4007
+      - NOTIFICATIONS_SERVICE_URL=http://notifications-service:4008
+      - FILE_STORAGE_SERVICE_URL=http://file-storage-service:4009
+      - IMPORT_EXPORT_SERVICE_URL=http://import-export-service:4010
+      - SYNC_SERVICE_URL=http://sync-service:4011
+      - PREDICTIONS_SERVICE_URL=http://predictions-service:4012
+      # Infrastructure
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+      - rabbitmq
+      - auth-service
+      - user-service
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # AUTH SERVICE
+  # ==========================================
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-auth-service
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      - NODE_ENV=development
+      - PORT=4001
+      - HOST=0.0.0.0
+      # Database
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_auth
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=false
+      # JWT
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - JWT_ACCESS_TOKEN_EXPIRATION=2h
+      - JWT_REFRESH_TOKEN_EXPIRATION=7d
+      # Security
+      - BCRYPT_SALT_ROUNDS=10
+      - MAX_LOGIN_ATTEMPTS=5
+      - ACCOUNT_LOCK_DURATION_MS=900000
+      # Session
+      - SESSION_CLEANUP_INTERVAL=3600000
+      - SESSION_MAX_INACTIVE_DURATION=2592000000
+      # Services
+      - USER_SERVICE_URL=http://user-service:4002
+      # Infrastructure
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # USER SERVICE
+  # ==========================================
+
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-user-service
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    environment:
+      - NODE_ENV=development
+      - PORT=4002
+      - HOST=0.0.0.0
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immoUser
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=false
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - FRONTEND_URL=http://localhost:3000
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # INFRASTRUCTURE SERVICE
+  # ==========================================
+
+  infrastructure-service:
+    build:
+      context: ./services/infrastructure-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-infrastructure-service
+    restart: unless-stopped
+    ports:
+      - "4003:4003"
+    environment:
+      - NODE_ENV=development
+      - PORT=4003
+      - HOST=0.0.0.0
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_infrastructure
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=false
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # EQUIPMENT SERVICE
+  # ==========================================
+
+  equipment-service:
+    build:
+      context: ./services/equipment-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-equipment-service
+    restart: unless-stopped
+    ports:
+      - "4004:4004"
+    environment:
+      - NODE_ENV=development
+      - PORT=4004
+      - HOST=0.0.0.0
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_equipment
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=false
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # INCIDENTS SERVICE
+  # ==========================================
+
+  incidents-service:
+    build:
+      context: ./services/incidents-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-incidents-service
+    restart: unless-stopped
+    ports:
+      - "4005:4005"
+    environment:
+      - NODE_ENV=development
+      - PORT=4005
+      - HOST=0.0.0.0
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_incidents
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=false
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # AUDIT SERVICE
+  # ==========================================
+
+  audit-service:
+    build:
+      context: ./services/audit-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-audit-service
+    restart: unless-stopped
+    ports:
+      - "4006:4006"
+    environment:
+      - NODE_ENV=development
+      - PORT=4006
+      - HOST=0.0.0.0
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_audit
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=false
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # ANALYTICS SERVICE
+  # ==========================================
+
+  analytics-service:
+    build:
+      context: ./services/analytics-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-analytics-service
+    restart: unless-stopped
+    ports:
+      - "4007:4007"
+    environment:
+      - NODE_ENV=development
+      - PORT=4007
+      - HOST=0.0.0.0
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_analytics
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=false
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # NOTIFICATIONS SERVICE
+  # ==========================================
+
+  notifications-service:
+    build:
+      context: ./services/notifications-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-notifications-service
+    restart: unless-stopped
+    ports:
+      - "4008:4008"
+    environment:
+      - NODE_ENV=development
+      - PORT=4008
+      - HOST=0.0.0.0
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_notifications
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=false
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4008/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # FILE STORAGE SERVICE
+  # ==========================================
+
+  file-storage-service:
+    build:
+      context: ./services/file-storage-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-file-storage-service
+    restart: unless-stopped
+    ports:
+      - "4009:4009"
+    environment:
+      - NODE_ENV=development
+      - PORT=4009
+      - HOST=0.0.0.0
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_files
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=false
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+      - UPLOAD_DIR=/app/uploads
+    depends_on:
+      - postgres
+      - rabbitmq
+    volumes:
+      - file-uploads:/app/uploads
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4009/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # IMPORT/EXPORT SERVICE
+  # ==========================================
+
+  import-export-service:
+    build:
+      context: ./services/import-export-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-import-export-service
+    restart: unless-stopped
+    ports:
+      - "4010:4010"
+    environment:
+      - NODE_ENV=development
+      - PORT=4010
+      - HOST=0.0.0.0
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # SYNC SERVICE
+  # ==========================================
+
+  sync-service:
+    build:
+      context: ./services/sync-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-sync-service
+    restart: unless-stopped
+    ports:
+      - "4011:4011"
+    environment:
+      - NODE_ENV=development
+      - PORT=4011
+      - HOST=0.0.0.0
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4011/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ==========================================
+  # PREDICTIONS SERVICE
+  # ==========================================
+
+  predictions-service:
+    build:
+      context: ./services/predictions-service
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-predictions-service
+    restart: unless-stopped
+    ports:
+      - "4012:4012"
+    environment:
+      - NODE_ENV=development
+      - PORT=4012
+      - HOST=0.0.0.0
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - rabbitmq
+      - redis
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:4012/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+# ==========================================
+# VOLUMES
+# ==========================================
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+  file-uploads:
+
+# ==========================================
+# NETWORKS
+# ==========================================
+
+networks:
+  immo360-network:
+    driver: bridge
+    name: immo360-network

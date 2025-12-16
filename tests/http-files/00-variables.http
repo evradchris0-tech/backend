@@ -1,0 +1,30 @@
+# ============================================
+# IMMO360 - Variables Globales
+# ============================================
+
+### Variables d'environnement
+@baseUrlGateway = http://localhost:4000
+@baseUrlAuth = http://localhost:4001
+@baseUrlUser = http://localhost:4002
+@baseUrlSync = http://localhost:4003
+
+### Credentials Super Admin
+@emailSuperAdmin = chrisomgba04@gmail.com
+@passwordSuperAdmin = Password@123
+
+### Credentials Admin
+@emailAdmin = admin1@immo360.cm
+@passwordAdmin = Password@123
+
+### Credentials Superviseur
+@emailSupervisor = superviseur1@immo360.cm
+@passwordSupervisor = Password@123
+
+### Credentials Agent
+@emailAgent = agent1@immo360.cm
+@passwordAgent = Password@123
+
+### Tokens (à remplir après login)
+@accessToken = 
+@refreshToken = 
+@userId =

@@ -1,0 +1,110 @@
+# ============================================
+# AUTH-SERVICE - Tests Directs (Port 4001)
+# ============================================
+
+
+### VARIABLES
+@baseUrl = http://localhost:4001
+@emailTest = chrisomgba04@gmail.com
+@passwordTest = Password@123
+
+
+### 1. Health Check
+GET {{baseUrl}}/auth/health
+Content-Type: application/json
+
+
+### 2. Login Super Admin
+# @name loginSuperAdmin
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{emailTest}}",
+  "password": "{{passwordTest}}"
+}
+
+
+### 3. Extraire le token (copie manuellement après login)
+@accessToken = {{loginSuperAdmin.response.body.$.accessToken}}
+@refreshToken = {{loginSuperAdmin.response.body.$.refreshToken}}
+@userId = {{loginSuperAdmin.response.body.$.user.id}}
+
+
+### 4. Vérifier le profil
+GET {{baseUrl}}/auth/profile
+Authorization: Bearer {{accessToken}}
+
+
+### 5. Login Admin 1
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin1@immo360.cm",
+  "password": "Password@123"
+}
+
+
+### 6. Login Superviseur 1
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "superviseur1@immo360.cm",
+  "password": "Password@123"
+}
+
+
+### 7. Login Agent 1
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "agent1@immo360.cm",
+  "password": "Password@123"
+}
+
+
+### 8. Refresh Token
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+
+### 9. Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+
+### 10. Change Password
+PATCH {{baseUrl}}/auth/change-password
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "Password@123",
+  "newPassword": "NewPassword@456"
+}
+
+
+### 11. Google OAuth - Initier connexion (ouvre dans navigateur)
+GET {{baseUrl}}/auth/google
+
+
+### 12. Verify Email (si endpoint existe)
+POST {{baseUrl}}/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "{{emailTest}}",
+  "token": "verification-token-here"
+}

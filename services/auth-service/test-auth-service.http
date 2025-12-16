@@ -1,0 +1,52 @@
+### Auth-Service Health Check
+GET http://localhost:3002/health
+Accept: application/json
+
+### Get Auth-Service Status
+GET http://localhost:3002/api/auth/status
+Accept: application/json
+
+### Wait for Password Email Events (RabbitMQ should have routed them)
+### Check if credentials were created for imported users
+GET http://localhost:3002/api/auth/credentials?userId=usr_test_001
+Accept: application/json
+
+### Get All Credentials (verify emails were sent)
+GET http://localhost:3002/api/auth/credentials
+Accept: application/json
+
+### Verify Temporary Password Works (use password from email)
+POST http://localhost:3002/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user1@test-import.com",
+  "password": "TempPass123!@"
+}
+
+### Change Password on First Login (needs passwordChange flag + token from login)
+POST http://localhost:3002/api/auth/change-password
+Content-Type: application/json
+Authorization: Bearer {TOKEN_FROM_LOGIN}
+
+{
+  "currentPassword": "TempPass123!@",
+  "newPassword": "MySecurePassword123!@"
+}
+
+### Login with New Password
+POST http://localhost:3002/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user1@test-import.com",
+  "password": "MySecurePassword123!@"
+}
+
+### Verify Credential Record
+GET http://localhost:3002/api/auth/credentials/usr_test_001
+Accept: application/json
+
+### Check Failed Login Attempts
+GET http://localhost:3002/api/auth/credentials/usr_test_001/security
+Accept: application/json

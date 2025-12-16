@@ -1,0 +1,42 @@
+### Sync-Service Health Check
+GET http://localhost:3003/history/health
+Accept: application/json
+### Get Sync-Service Status
+GET http://localhost:3003/api/sync/status
+Accept: application/json
+
+### Get Operation History (all events recorded)
+GET http://localhost:3003/api/operations
+Accept: application/json
+
+### Get Specific Operation by Event ID
+GET http://localhost:3003/api/operations/evt_test_123
+Accept: application/json
+
+### Get Operation Details (full event data)
+GET http://localhost:3003/api/operations/evt_test_123/details
+Accept: application/json
+
+### Get Import Operations Only
+GET http://localhost:3003/api/operations?operationType=IMPORT_USERS_EXCEL
+Accept: application/json
+
+### Get Email Sending Operations
+GET http://localhost:3003/api/operations?operationType=SEND_PASSWORD_EMAILS
+Accept: application/json
+
+### Get Failed Operations Only
+GET http://localhost:3003/api/operations?status=PARTIAL_FAILURE
+Accept: application/json
+
+### Get Completed Operations
+GET http://localhost:3003/api/operations?status=COMPLETED
+Accept: application/json
+
+### Get Operation Statistics (audit report)
+GET http://localhost:3003/api/operations/stats
+Accept: application/json
+
+### Get Cached Event from Redis (if available)
+GET http://localhost:3003/api/cache/evt_test_123
+Accept: application/json

@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-api-gateway
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=development
+      - PORT=4000
+      - HOST=0.0.0.0
+      # JWT
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      # Services URLs
+      - AUTH_SERVICE_URL=http://auth-service:4001
+      - USER_SERVICE_URL=http://user-service:4002
+      - INFRASTRUCTURE_SERVICE_URL=http://infrastructure-service:4003
+      - EQUIPMENT_SERVICE_URL=http://equipment-service:4004
+      - INCIDENTS_SERVICE_URL=http://incidents-service:4005
+      - AUDIT_SERVICE_URL=http://audit-service:4006
+      - ANALYTICS_SERVICE_URL=http://analytics-service:4007
+      - NOTIFICATIONS_SERVICE_URL=http://notifications-service:4008
+      - FILE_STORAGE_SERVICE_URL=http://file-storage-service:4009
+      - IMPORT_EXPORT_SERVICE_URL=http://import-export-service:4010
+      - SYNC_SERVICE_URL=http://sync-service:4011
+      - PREDICTIONS_SERVICE_URL=http://predictions-service:4012
+      # Infrastructure
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: immo360-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: immo360-rabbitmq
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=immo360
+      - RABBITMQ_DEFAULT_PASS=immo360
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  redis-data:
+  rabbitmq-data:
+
+networks:
+  immo360-network:
+    driver: bridge

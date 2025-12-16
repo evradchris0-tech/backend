@@ -1,0 +1,246 @@
+###############################################################################
+# 🔐 USER-SERVICE - COMPLETE API TESTS
+# Base URL: http://localhost:3002
+###############################################################################
+
+### 📌 VARIABLES
+@base_url = http://localhost:3002
+@access_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInNlc3Npb25JZCI6ImQwMzI2Yzc4LTdiMTYtNDBkMy1iZGZiLTNmYjI3NjhkZmM3NCIsImlhdCI6MTc2NTA1NzgxOCwiZXhwIjoxNzY1MDYxNDE4fQ.wm8unYf7Deu_ihemXXILrNrpDIv1Vz3bW3-aO55zo98
+@user_id = 186a35c1-f54f-458d-8f39-b0ea615a4164
+
+###############################################################################
+# 1. 👥 GESTION DES UTILISATEURS
+###############################################################################
+
+### 1.1 Créer un ADMINISTRATEUR
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "abahgracia05@gmail.com",
+  "firstName": "Abah",
+  "lastName": "Gracia",
+  "role": "ADMINISTRATOR"
+}
+
+### 1.2 Créer un SUPERVISEUR
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "superviseur@immo360.cm",
+  "firstName": "Jean",
+  "lastName": "Superviseur",
+  "role": "SUPERVISOR"
+}
+
+### 1.3 Créer un AGENT DE TERRAIN
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "agent.terrain@immo360.cm",
+  "firstName": "Pierre",
+  "lastName": "Agent",
+  "role": "AGENT_TERRAIN"
+}
+
+### 1.4 Créer un OCCUPANT
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "omgbaomgba79@gmail.com",
+  "firstName": "OMGBA",
+  "lastName": "FOUDA",
+  "role": "OCCUPANT"
+}
+
+###############################################################################
+# 2. 📋 LISTER LES UTILISATEURS (PAGINATION)
+###############################################################################
+
+### 2.1 Liste de tous les utilisateurs (page 1, 10 par page)
+GET {{base_url}}/users?page=1&limit=10
+Authorization: Bearer {{access_token}}
+
+### 2.2 Filtrer par rôle ADMINISTRATOR
+GET {{base_url}}/users?role=ADMINISTRATOR&page=1&limit=10
+Authorization: Bearer {{access_token}}
+
+### 2.3 Filtrer par statut ACTIVE
+GET {{base_url}}/users?status=ACTIVE&page=1&limit=10
+Authorization: Bearer {{access_token}}
+
+### 2.4 Recherche par email
+GET {{base_url}}/users?search=admin&page=1&limit=10
+Authorization: Bearer {{access_token}}
+
+### 2.5 Filtrer par rôle AGENT_TERRAIN
+GET {{base_url}}/users?role=AGENT_TERRAIN
+Authorization: Bearer {{access_token}}
+
+### 2.6 Filtrer par rôle OCCUPANT
+GET {{base_url}}/users?role=OCCUPANT
+Authorization: Bearer {{access_token}}
+
+###############################################################################
+# 3. 🔍 DÉTAILS D'UN UTILISATEUR
+###############################################################################
+
+### 3.1 Obtenir les détails du SUPERADMIN
+GET {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+
+### 3.2 Obtenir un utilisateur inexistant (doit retourner 404)
+GET {{base_url}}/users/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{access_token}}
+
+###############################################################################
+# 4. ✏️ MODIFIER UN UTILISATEUR
+###############################################################################
+
+### 4.1 Modifier le prénom et nom
+PATCH {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "firstName": "IMMO",
+  "lastName": "360"
+}
+
+### 4.2 Modifier le rôle
+PATCH {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+    "role": "ADMINISTRATOR"
+}
+
+### 4.3 Modifier le statut
+PATCH {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "status": "INACTIVE"
+}
+
+### 4.4 Remettre le statut ACTIVE
+PATCH {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+###############################################################################
+# 5. 🏠 ASSIGNER UNE CHAMBRE
+###############################################################################
+
+### 5.1 Assigner une chambre à un occupant
+PATCH {{base_url}}/users/{{user_id}}/assign-room
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "roomId": "ROOM-001",
+  "academicSessionId": "2025-2026"
+}
+
+### 5.2 Changer de chambre
+PATCH {{base_url}}/users/{{user_id}}/assign-room
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "roomId": "ROOM-102",
+  "academicSessionId": "2025-2026"
+}
+
+###############################################################################
+# 6. 📥 IMPORTATION D'OCCUPANTS VIA EXCEL
+###############################################################################
+
+### 6.1 Télécharger le template Excel
+GET {{base_url}}/users/import/template
+Authorization: Bearer {{access_token}}
+
+### 6.2 Importer des occupants (avec fichier Excel)
+# IMPORTANT: Utilisez Postman ou un client HTTP avec support multipart/form-data
+POST {{base_url}}/users/import/occupants
+Authorization: Bearer {{access_token}}
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="academicSessionId"
+
+2025-2026
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="occupants.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./occupants.xlsx
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+###############################################################################
+# 7. 🗑️ SUPPRIMER UN UTILISATEUR
+###############################################################################
+
+### 7.1 Supprimer un utilisateur (soft delete)
+DELETE {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+
+###############################################################################
+# 8. ❌ TESTS D'ERREURS
+###############################################################################
+
+### 8.1 Créer un utilisateur avec email déjà existant (409 Conflict)
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "superadmin@immo360.cm",
+  "firstName": "Doublon",
+  "lastName": "Test",
+  "role": "ADMINISTRATOR"
+}
+
+### 8.2 Créer sans JWT (401 Unauthorized)
+POST {{base_url}}/users
+Content-Type: application/json
+
+{
+  "email": "test@immo360.cm",
+  "firstName": "Test",
+  "lastName": "Sans Auth",
+  "role": "ADMINISTRATOR"
+}
+
+### 8.3 Créer avec données invalides (400 Bad Request)
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "email-invalide",
+  "firstName": "",
+  "role": "ROLE_INVALIDE"
+}
+
+### 8.4 Modifier un utilisateur inexistant (404 Not Found)
+PATCH {{base_url}}/users/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "firstName": "Test"
+}

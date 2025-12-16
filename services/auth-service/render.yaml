@@ -1,0 +1,63 @@
+services:
+  - type: web
+    name: immo360-auth-service
+    env: node
+    plan: standard
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: FRONTEND_URL
+        scope: runtime
+      - key: DB_HOST
+        scope: runtime
+      - key: DB_PORT
+        value: 5432
+      - key: DB_USERNAME
+        scope: runtime
+      - key: DB_PASSWORD
+        scope: runtime
+      - key: DB_DATABASE
+        value: immo360_auth
+      - key: DB_SYNCHRONIZE
+        value: "false"
+      - key: DB_LOGGING
+        value: "false"
+      - key: JWT_SECRET
+        scope: runtime
+      - key: JWT_EXPIRATION
+        value: 2h
+      - key: JWT_REFRESH_SECRET
+        scope: runtime
+      - key: JWT_REFRESH_EXPIRATION
+        value: 7d
+      - key: PASSWORD_ENCRYPTION_KEY
+        scope: runtime
+      - key: SESSION_MAX_DURATION_HOURS
+        value: 8
+      - key: SESSION_IDLE_TIMEOUT_MINUTES
+        value: 30
+      - key: GOOGLE_CLIENT_ID
+        scope: runtime
+      - key: GOOGLE_CLIENT_SECRET
+        scope: runtime
+      - key: GOOGLE_REDIRECT_URI
+        scope: runtime
+      - key: SMTP_ENABLED
+        value: "true"
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        scope: runtime
+      - key: SMTP_PASS
+        scope: runtime
+      - key: SMTP_FROM
+        value: noreply@immo360.cm
+    healthCheckPath: /health

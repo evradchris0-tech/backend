@@ -1,0 +1,92 @@
+# ======================
+# Node / NPM / Workspace
+# ======================
+node_modules/
+**/node_modules/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Ignore npm debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ======================
+# Typescript
+# ======================
+dist/
+**/dist/
+build/
+**/build/
+
+# TS build info
+*.tsbuildinfo
+
+# ======================
+# Environnements
+# ======================
+.env
+.env.*
+!.env.example
+
+# ======================
+# Logs
+# ======================
+logs/
+*.log
+logs/*.log
+*.log.*
+debug.log
+
+# ======================
+# Coverage & Tests
+# ======================
+coverage/
+**/coverage/
+.nyc_output/
+jest-results.json
+
+# ======================
+# Cache
+# ======================
+.cache/
+*.cache
+tmp/
+temp/
+**/.cache/
+
+# Turbo / Nx / Monorepo Tools
+.turbo/
+.out/
+output/
+
+# ======================
+# IDE / Editors
+# ======================
+# VSCode
+.vscode/
+*.code-workspace
+
+# WebStorm / JetBrains
+.idea/
+
+# ======================
+# OS Files
+# ======================
+.DS_Store
+Thumbs.db
+
+# ======================
+# Docker
+# ======================
+docker-data/
+**/docker-data/
+*.pid
+
+# ======================
+# Misc
+# ======================
+*.tgz
+*.zip
+*.tar

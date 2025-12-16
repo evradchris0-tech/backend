@@ -1,0 +1,353 @@
+### ============================================================
+### COMPLETE TESTING GUIDE FOR EVENT-DRIVEN ARCHITECTURE
+### ============================================================
+###
+### Order to Execute:
+### 1. Start all microservices (see below)
+### 2. Test Health Checks
+### 3. Upload Excel (User-Service)
+### 4. Wait for RabbitMQ to route events (~2-3 seconds)
+### 5. Check Auth-Service received credentials
+### 6. Check Sync-Service recorded events
+### 7. Test login with temporary password
+### 8. Test password change
+### 9. Login with new password
+### 10. View complete audit trail
+###
+### ============================================================
+
+### ============================================================
+### STEP 0: START ALL MICROSERVICES
+### ============================================================
+###
+### Open Terminal and run:
+###
+### cd /d/backend/immo360-backend
+### docker-compose -f docker-compose.dev.yml up -d
+###
+### Wait 30 seconds for services to start
+###
+### Verify with:
+### docker ps
+### Should see: postgres, rabbitmq, user-service, auth-service, sync-service, api-gateway
+###
+### View RabbitMQ UI:
+### http://localhost:15672
+### Login: guest / guest
+###
+### ============================================================
+
+### ============================================================
+### STEP 1: HEALTH CHECKS
+### ============================================================
+
+### 1.1 User-Service Health
+GET http://localhost:3001/health
+Accept: application/json
+
+### 1.2 Auth-Service Health
+GET http://localhost:3002/health
+Accept: application/json
+
+### 1.3 Sync-Service Health
+GET http://localhost:3003/health
+Accept: application/json
+
+### 1.4 API-Gateway Health
+GET http://localhost:3000/health
+Accept: application/json
+
+### ============================================================
+### STEP 2: UPLOAD EXCEL FILE (Main Action)
+### ============================================================
+###
+### IMPORTANT:
+### 1. Create test Excel file with columns:
+###    - Email (e.g., user1@test.com)
+###    - Full Name (e.g., John Doe)
+###    - Address (e.g., 123 Rue Paris)
+###    - Room Number (e.g., 101)
+###
+### 2. Save as: test-data/test-users.xlsx
+###
+### 3. OR use curl:
+###    curl -X POST http://localhost:3001/api/users/import/upload \
+###      -F "file=@test-data/test-users.xlsx"
+###
+### EXPECTED RESPONSE:
+### {
+###   "success": true,
+###   "message": "N users imported successfully",
+###   "data": {
+###     "successCount": N,
+###     "failureCount": 0,
+###     "eventId": "evt_xxxxxxxx",
+###     "importedUserIds": ["usr_1", "usr_2", ...]
+###   }
+### }
+###
+### SAVE THE eventId - You'll need it later!
+###
+
+### 2.1 Upload Excel via User-Service (Direct)
+POST http://localhost:3001/api/users/import/upload
+Content-Type: multipart/form-data; boundary=----Boundary123
+
+------Boundary123
+Content-Disposition: form-data; name="file"; filename="test-users.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./test-data/test-users.xlsx
+------Boundary123--
+
+### 2.2 Upload Excel via API-Gateway (Routes to User-Service)
+POST http://localhost:3000/api/users/import/upload
+Content-Type: multipart/form-data; boundary=----Boundary123
+
+------Boundary123
+Content-Disposition: form-data; name="file"; filename="test-users.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./test-data/test-users.xlsx
+------Boundary123--
+
+### ============================================================
+### STEP 3: WAIT FOR EVENTS TO PROPAGATE
+### ============================================================
+###
+### What happens automatically:
+### 1. User-Service publishes UsersImportedEvent to RabbitMQ (~20ms)
+### 2. RabbitMQ routes to Auth-Service queue (~10ms)
+### 3. Auth-Service listener receives and processes (~3-5 seconds)
+###    - Generates temporary password
+###    - Hashes with bcrypt (slow, 10 rounds)
+###    - Saves credential to database
+###    - Sends email
+###    - Publishes PasswordsGeneratedEvent
+### 4. RabbitMQ routes to Sync-Service queue (~10ms)
+### 5. Sync-Service records in operation_history (~100ms)
+###
+### Total: ~3-5 seconds
+###
+### Check RabbitMQ to see messages being routed:
+### http://localhost:15672 → Queues tab
+###
+
+### 3.1 Check RabbitMQ Queues (in browser)
+### Open: http://localhost:15672
+### Login: guest / guest
+### Click "Queues" tab
+### Should see:
+### - user.imported: 0-1 messages (being consumed)
+### - sync.users-imported: 0 messages (consumed)
+### - sync.passwords-generated: 0 messages (consumed)
+
+### ============================================================
+### STEP 4: VERIFY USERS WERE CREATED
+### ============================================================
+
+### 4.1 List All Users (should show imported users)
+GET http://localhost:3001/api/users
+Accept: application/json
+
+### Expected: Array with all users, isVerified: true, role: OCCUPANT
+
+### 4.2 Get Single User Details
+GET http://localhost:3001/api/users/usr_001
+Accept: application/json
+
+### Expected: User object with isVerified: true, role: OCCUPANT, password: null
+
+### ============================================================
+### STEP 5: VERIFY CREDENTIALS WERE CREATED
+### ============================================================
+###
+### Credentials should be created AFTER emails are sent
+### Check Auth-Service database
+###
+
+### 5.1 List All Credentials (verify hashes were created)
+GET http://localhost:3002/api/auth/credentials
+Accept: application/json
+
+### Expected: Array with credential objects, passwordHash set, needsPasswordChange: true
+
+### 5.2 Get Specific Credential
+GET http://localhost:3002/api/auth/credentials/usr_001
+Accept: application/json
+
+### Expected: Credential object with bcrypt hash
+
+### ============================================================
+### STEP 6: VERIFY EVENTS WERE RECORDED (Audit Trail)
+### ============================================================
+###
+### Sync-Service records all events for audit trail
+###
+
+### 6.1 Get All Operations
+GET http://localhost:3003/api/operations
+Accept: application/json
+
+### Expected: Array with at least 2 operations:
+### - IMPORT_USERS_EXCEL (status: COMPLETED)
+### - SEND_PASSWORD_EMAILS (status: COMPLETED or PARTIAL_FAILURE)
+
+### 6.2 Get Import Operation
+GET http://localhost:3003/api/operations?operationType=IMPORT_USERS_EXCEL
+Accept: application/json
+
+### Expected: Import event with all user details and metadata
+
+### 6.3 Get Email Operation
+GET http://localhost:3003/api/operations?operationType=SEND_PASSWORD_EMAILS
+Accept: application/json
+
+### Expected: Email event with success/failure counts
+
+### 6.4 Get Operation by Event ID (use eventId from Step 2)
+GET http://localhost:3003/api/operations/evt_xxx
+Accept: application/json
+
+### ============================================================
+### STEP 7: VERIFY EMAILS WERE SENT
+### ============================================================
+###
+### If using MailHog (test email server):
+### http://localhost:1025
+### You should see emails with temporary password
+###
+### If using real SMTP:
+### Check your email inbox for:
+### Subject: "Immo360 - Votre accès initial"
+### Contains: temporary password, login URL, security warning
+###
+
+### ============================================================
+### STEP 8: TEST LOGIN WITH TEMPORARY PASSWORD
+### ============================================================
+###
+### Get the temporary password from email or database
+### Login should succeed
+### Response should include: token, needsPasswordChange: true
+###
+
+### 8.1 Login with Temporary Password
+POST http://localhost:3002/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user1@test.com",
+  "password": "TempPass123!@"
+}
+
+### Expected Response:
+### {
+###   "success": true,
+###   "token": "eyJhbGc...",
+###   "needsPasswordChange": true,
+###   "user": {
+###     "id": "usr_001",
+###     "email": "user1@test.com",
+###     "role": "OCCUPANT"
+###   }
+### }
+
+### ============================================================
+### STEP 9: TEST PASSWORD CHANGE (First Login)
+### ============================================================
+###
+### User MUST change password on first login
+### Send token from previous response
+###
+
+### 9.1 Change Password (REQUIRED on first login)
+POST http://localhost:3002/api/auth/change-password
+Content-Type: application/json
+Authorization: Bearer eyJhbGc... # Use token from Step 8.1
+
+{
+  "currentPassword": "TempPass123!@",
+  "newPassword": "MySecurePassword123!@"
+}
+
+### Expected Response:
+### {
+###   "success": true,
+###   "message": "Password changed successfully"
+### }
+
+### ============================================================
+### STEP 10: TEST LOGIN WITH NEW PASSWORD
+### ============================================================
+
+### 10.1 Login with New Password
+POST http://localhost:3002/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "user1@test.com",
+  "password": "MySecurePassword123!@"
+}
+
+### Expected Response:
+### {
+###   "success": true,
+###   "token": "eyJhbGc...",
+###   "needsPasswordChange": false,  # Now false!
+###   "user": {
+###     "id": "usr_001",
+###     "email": "user1@test.com",
+###     "role": "OCCUPANT"
+###   }
+### }
+
+### ============================================================
+### STEP 11: TEST COMPLETE AUDIT TRAIL
+### ============================================================
+
+### 11.1 Get All Operations (complete flow)
+GET http://localhost:3003/api/operations
+Accept: application/json
+
+### Should have:
+### 1. IMPORT_USERS_EXCEL: N users imported
+### 2. SEND_PASSWORD_EMAILS: N emails sent successfully
+
+### 11.2 Get Statistics
+GET http://localhost:3003/api/operations/stats
+Accept: application/json
+
+### Should show:
+### - Total imports
+### - Total users imported
+### - Email success rate
+### - Average processing time
+
+### ============================================================
+### BONUS: MONITORING & DEBUGGING
+### ============================================================
+
+### B.1 Check RabbitMQ Management
+### Open: http://localhost:15672
+### Login: guest / guest
+### Verify:
+### - user-domain-events exchange exists
+### - auth-domain-events exchange exists
+### - All queues exist and have consumers
+
+### B.2 Check Database (PostgreSQL)
+### Connect: docker exec -it postgres psql -U postgres -d immo360
+### Queries:
+### SELECT COUNT(*) FROM users;
+### SELECT COUNT(*) FROM auth_credentials;
+### SELECT COUNT(*) FROM operation_history;
+
+### B.3 View Service Logs
+### User-Service: docker logs -f user-service | grep -i "UsersImportedEvent"
+### Auth-Service: docker logs -f auth-service | grep -i "email"
+### Sync-Service: docker logs -f sync-service | grep -i "recording"
+
+### B.4 Check Email Service (MailHog)
+### http://localhost:1025
+### Should see emails received by imported users

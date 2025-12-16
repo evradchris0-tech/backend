@@ -1,0 +1,242 @@
+### Excel Import API Tests
+
+## Environment Variables
+@baseUrl = http://localhost:3001
+@port = 3001
+
+---
+
+## 1. Get Template Excel
+GET {{baseUrl}}/users/import/template
+
+---
+
+## 2. Validate Excel File Before Import
+POST {{baseUrl}}/users/import/validate
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="test-users.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./test-users.xlsx
+------WebKitFormBoundary--
+
+---
+
+## 3. Import Excel File (Create Users)
+POST {{baseUrl}}/users/import/upload
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+
+------WebKitFormBoundary
+Content-Disposition: form-data; name="file"; filename="test-users.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./test-users.xlsx
+------WebKitFormBoundary--
+
+---
+
+## 4. Export All Users to Excel
+GET {{baseUrl}}/users/import/export
+
+---
+
+## Notes
+
+1. **Download Template First**
+   - GET endpoint to download empty template with correct columns
+   - Edit locally with user data
+   - Save as .xlsx file
+
+2. **Column Names (Flexible)**
+   - Email: Email, email, EMAIL, E-mail, Adresse Email
+   - Address: Adresse, Adresse Postale, Rue
+   - Full Name: Nom Complet, Nom et Prenom
+   - Room: Chambre, Room
+   - Role: Rôle, Role (default: OCCUPANT)
+
+3. **Auto-Verification**
+   - ✅ All imported users have isVerified: true automatically
+   - No email verification step needed
+
+4. **File Requirements**
+   - Format: .xlsx or .xls
+   - Max size: 5MB
+   - Columns: Email (required), Address/Full Name/Room/Role (optional)
+
+5. **Batch Processing**
+   - 50 users per batch
+   - 100 users ≈ 2 seconds
+   - No blocking
+
+6. **Error Handling**
+   - Validation BEFORE import prevents partial failures
+   - Line-by-line error tracking
+   - Duplicates detected automatically
+
+## Test Workflow
+
+1. GET /users/import/template
+   → Save as template.xlsx
+
+2. Edit template.xlsx locally:
+   - Add user data
+   - Ensure valid emails
+   - Set addresses if needed
+
+3. POST /users/import/validate
+   → Check for errors before import
+
+4. POST /users/import/upload
+   → Create users (isVerified: true)
+
+5. GET /users/import/export
+   → Verify users were created
+
+## Example Data Structure
+
+| Email                | Adresse                    | Nom Complet      | Chambre | Rôle     |
+|----------------------|---------------------------|------------------|---------|----------|
+| alice@example.com    | 123 Rue de la Paix, Paris | Alice Dupont     | A101    | OCCUPANT |
+| bob@example.com      | 456 Avenue de la Paix     | Bob Martin       | A102    | OCCUPANT |
+| carol@example.com    | 789 Boulevard Saint-Germain | Carol Leclerc  | A103    | ADMIN    |
+
+## Expected Response (Import Success)
+
+```json
+{
+  "success": true,
+  "imported": 3,
+  "errors": [],
+  "warnings": [],
+  "message": "✅ 3 utilisateurs importés avec succès (isVerified = true)"
+}
+```
+
+## Common Error Responses
+
+**Invalid Email:**
+```json
+{
+  "success": false,
+  "imported": 0,
+  "errors": [
+    {
+      "lineNumber": 2,
+      "email": "invalid-email",
+      "error": "Email invalide"
+    }
+  ]
+}
+```
+
+**Duplicate Email:**
+```json
+{
+  "success": false,
+  "imported": 0,
+  "errors": [
+    {
+      "lineNumber": 3,
+      "email": "alice@example.com",
+      "error": "Email déjà utilisé"
+    }
+  ]
+}
+```
+
+**File Not Provided:**
+```json
+{
+  "statusCode": 400,
+  "message": "Fichier requis",
+  "error": "Bad Request"
+}
+```
+
+**Invalid File Format:**
+```json
+{
+  "statusCode": 400,
+  "message": "Format invalide. Utilisez un fichier Excel (.xlsx ou .xls)",
+  "error": "Bad Request"
+}
+```
+
+## Performance Benchmarks
+
+- 10 users: ~300ms
+- 50 users: ~500ms
+- 100 users: ~1.5s
+- 500 users: ~6s
+- 1000 users: ~12s
+
+Note: Times may vary based on database and hardware
+
+## Postman Collection
+
+Can be imported into Postman for easier testing:
+
+1. Create collection: "User Service - Excel Import"
+2. Add requests:
+   - GET /users/import/template
+   - POST /users/import/validate
+   - POST /users/import/upload
+   - GET /users/import/export
+3. Set {{baseUrl}} variable to http://localhost:3001
+4. Test each endpoint
+
+## cURL Examples
+
+### Download Template
+```bash
+curl -X GET http://localhost:3001/users/import/template \
+  -o template.xlsx
+```
+
+### Validate File
+```bash
+curl -X POST http://localhost:3001/users/import/validate \
+  -F "file=@utilisateurs.xlsx"
+```
+
+### Import File
+```bash
+curl -X POST http://localhost:3001/users/import/upload \
+  -F "file=@utilisateurs.xlsx"
+```
+
+### Export Users
+```bash
+curl -X GET http://localhost:3001/users/import/export \
+  -o export.xlsx
+```
+
+---
+
+## Troubleshooting Commands
+
+### Check if service is running
+```bash
+curl http://localhost:3001/health
+```
+
+### List all users (to verify imports)
+```bash
+curl http://localhost:3001/users
+```
+
+### Get specific user
+```bash
+curl http://localhost:3001/users/{userId}
+```
+
+### Check user isVerified status
+```bash
+curl http://localhost:3001/users/{userId} | grep isVerified
+```
+
+---
+
+**Status:** Ready for Testing ✅

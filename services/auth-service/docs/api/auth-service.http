@@ -1,0 +1,548 @@
+###############################################################################
+# 🔐 AUTH-SERVICE - COMPLETE API TESTS
+# Base URL: http://localhost:3001
+# NestJS Clean Architecture + Google OAuth 2.0
+###############################################################################
+
+### 📌 VARIABLES (Update after login)
+@base_url = http://localhost:3000
+@access_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInNlc3Npb25JZCI6ImQwMzI2Yzc4LTdiMTYtNDBkMy1iZGZiLTNmYjI3NjhkZmM3NCIsImlhdCI6MTc2NTA1NzgxOCwiZXhwIjoxNzY1MDYxNDE4fQ.wm8unYf7Deu_ihemXXILrNrpDIv1Vz3bW3-aO55zo98
+@refresh_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInNlc3Npb25JZCI6ImQwMzI2Yzc4LTdiMTYtNDBkMy1iZGZiLTNmYjI3NjhkZmM3NCIsImlhdCI6MTc2NTA1NzgxOSwiZXhwIjoxNzY1NjYyNjE5fQ.WyFnATjDDC4TdyY9U6vg2hJvxgY8tIZMFqOnjGSmR40
+@session_token = 5076f65c-22ae-498c-82a3-cdfc2de86d8a
+@user_id = 186a35c1-f54f-458d-8f39-b0ea615a4164
+
+###############################################################################
+# 1. 🔑 AUTHENTICATION - EMAIL/PASSWORD
+###############################################################################
+
+### 1.1 Login with Email/Password (SUPERADMIN)
+### Test 1: Health Check
+
+GET http://localhost:3000/health
+# @name loginSuperAdmin
+POST {{base_url}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "superadmin@immo360.cm",
+  "password": "NewAdmin@2025!"
+}
+####
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+  "email": "superadmin@immo360.cm",
+  "password": "NewAdmin@2025!"
+}
+### 1.2 Login with Email/Password (ADMIN)
+# @name loginAdmin
+POST {{base_url}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@immo360.cm",
+  "password": "Admin@2025!"
+}
+
+###
+
+### 1.3 Login with Email/Password (Invalid Credentials)
+POST {{base_url}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@immo360.cm",
+  "password": "WrongPassword123!"
+}
+
+###
+
+###############################################################################
+# 2. 🔐 GOOGLE OAUTH 2.0 AUTHENTICATION
+###############################################################################
+
+### 2.1 Google OAuth - Initiate Login Flow
+# Open this URL in your browser:
+# http://localhost:3001/auth/google
+# 
+# This will:
+# 1. Redirect you to Google login
+# 2. After login, redirect to /auth/google/redirect
+# 3. Return JSON with accessToken, refreshToken
+# 
+# ⚠️ Cannot test with REST Client - Use browser
+
+###
+
+### 2.2 Google Login - Direct ID Token (from client)
+# @name googleTokenLogin
+POST {{base_url}}/auth/google-login
+Content-Type: application/json
+
+{
+  "idToken": "PASTE_GOOGLE_ID_TOKEN_HERE"
+}
+
+###
+
+###############################################################################
+# 3. 🔄 TOKEN MANAGEMENT
+###############################################################################
+
+### 3.1 Refresh Access Token
+# @name refreshToken
+POST {{base_url}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refresh_token}}"
+}
+
+###
+
+### 3.2 Refresh with Expired Token (should fail)
+POST {{base_url}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.expired.token"
+}
+
+###
+
+### 3.3 Logout (Revoke Session)
+POST {{base_url}}/auth/logout
+Authorization: Bearer {{access_token}}
+
+###
+
+###############################################################################
+# 4. 🔒 PASSWORD MANAGEMENT
+###############################################################################
+
+### 4.1 Change Password (Requires old password)
+POST {{base_url}}/auth/change-password
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+    "oldPassword": "NewSuperAdmin456!",
+    "newPassword": "NewAdmin@2025!"
+}
+
+###
+
+POST http://localhost:3001/auth/change-password
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInNlc3Npb25JZCI6IjlmZWNkODIwLTRlOTAtNDJlNi04ZjRlLTE1ZWFlZjU3OGQ0MiIsImlhdCI6MTc2NDk5MDc0MiwiZXhwIjoxNzY0OTk0MzQyfQ.5-1GF_WRDdvFuutTrRSNNiCPpwmZBT0bq-1K2tRxZKI
+Content-Type: application/json
+
+{
+  "oldPassword": "NewSuperAdmin456!",
+  "newPassword": "NewAdmin@2025!"
+}
+
+### 4.2 Change Password Back
+POST {{base_url}}/auth/change-password
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+    "oldPassword": "NewSuperAdmin456!",
+    "newPassword": "Admin@2025!"
+}
+
+###
+
+### 4.3 Change Password - Wrong Old Password (should fail)
+POST {{base_url}}/auth/change-password
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "oldPassword": "WrongPassword123!",
+  "newPassword": "NewPassword456!"
+}
+
+###
+
+### 4.4 Change Password - Weak New Password (should fail)
+POST {{base_url}}/auth/change-password
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "oldPassword": "NewAdmin@2025!",
+  "newPassword": "weak"
+}
+
+###
+
+###############################################################################
+# 5. ✉️ EMAIL VERIFICATION
+###############################################################################
+
+### 5.1 Verify Email with Code
+POST {{base_url}}/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "chrisomgba04@gmail.com",
+  "code": "ABC123"
+}
+
+###
+
+### 5.2 Verify Email - Invalid Code (should fail)
+POST {{base_url}}/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "admin@immo360.cm",
+  "code": "WRONG1"
+}
+
+###
+
+### 5.3 Verify Email - User Not Found (should fail)
+POST {{base_url}}/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "nonexistent@immo360.cm",
+  "code": "ABC123"
+}
+
+###
+
+###############################################################################
+# 6. 🔗 INTERNAL ENDPOINTS (Service-to-Service)
+###############################################################################
+
+### 6.1 Sync User Creation (Called by user-service)
+POST {{base_url}}/internal/users/sync
+Content-Type: application/json
+X-Internal-Service: user-service
+
+{
+  "userId": "{{user_id}}",
+  "email": "newuser@immo360.cm",
+  "passwordEncrypted": "$2b$12$LQ5JrFz8VhRoYJ1KZq7tEu8FzT5QJZ3L7mW8kN9vX2pR4sT6uY8hS",
+  "status": "ACTIVE",
+  "emailVerified": true
+}
+
+###
+
+### 6.2 Sync User Update (Called by user-service)
+PATCH {{base_url}}/internal/users/sync
+Content-Type: application/json
+X-Internal-Service: user-service
+
+{
+  "userId": "{{user_id}}",
+  "email": "updated@immo360.cm",
+  "passwordEncrypted": "$2b$12$newHashedPassword",
+  "status": "ACTIVE",
+  "emailVerified": true
+}
+
+###
+
+###############################################################################
+# 7. 🧪 TEST SCENARIOS
+###############################################################################
+
+### SCENARIO 1: Complete Email/Password Login Flow
+# 1. Execute 1.1 (Login)
+# 2. Copy accessToken from response
+# 3. Update @access_token variable
+# 4. Execute 3.3 (Logout)
+# 5. Try to use old token (should fail 401)
+
+###
+
+### SCENARIO 2: Google OAuth Flow
+# 1. Open browser: http://localhost:3001/auth/google
+# 2. Login with Google account
+# 3. Copy tokens from JSON response
+# 4. Update @access_token variable
+# 5. Execute 3.3 (Logout)
+
+###
+
+### SCENARIO 3: Token Refresh Flow
+# 1. Execute 1.1 (Login)
+# 2. Copy refreshToken
+# 3. Update @refresh_token variable
+# 4. Wait for access token to expire (2h) OR manually use expired token
+# 5. Execute 3.1 (Refresh)
+# 6. Receive new accessToken and refreshToken
+
+###
+
+### SCENARIO 4: Password Change Flow
+# 1. Execute 1.1 (Login with old password)
+# 2. Copy accessToken
+# 3. Execute 4.1 (Change password)
+# 4. Try 1.1 with old password (should fail)
+# 5. Execute 1.1 with new password (should succeed)
+# 6. Execute 4.2 (Change back to original)
+
+###
+
+### SCENARIO 5: Email Verification Flow
+# 1. User created in user-service (receives verification code in logs)
+# 2. Execute 5.1 with email and code
+# 3. Email verified in auth_users table
+# 4. User can now login normally
+
+###
+
+###############################################################################
+# 8. 📊 EXPECTED RESPONSES
+###############################################################################
+
+### 1.1 Login - Expected Response (200 OK)
+# {
+#   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "sessionToken": "uuid-session",
+#   "expiresIn": 7200,
+#   "user": {
+#     "id": "uuid-user",
+#     "email": "admin@immo360.cm"
+#   }
+# }
+
+### 2.1 Google OAuth - Browser Flow
+# After successful Google login, you'll see:
+# {
+#   "accessToken": "eyJ...",
+#   "refreshToken": "eyJ...",
+#   "sessionToken": "uuid",
+#   "expiresIn": 7200,
+#   "user": {
+#     "id": "uuid",
+#     "email": "yourname@gmail.com"
+#   }
+# }
+
+### 3.1 Refresh - Expected Response (200 OK)
+# {
+#   "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+#   "sessionToken": "uuid-session",
+#   "expiresIn": 7200,
+#   "user": {
+#     "id": "uuid-user",
+#     "email": "admin@immo360.cm"
+#   }
+# }
+
+### 3.3 Logout - Expected Response (200 OK)
+# {
+#   "message": "Logged out successfully"
+# }
+
+### 4.1 Change Password - Expected Response (200 OK)
+# {
+#   "message": "Password changed successfully"
+# }
+
+### 5.1 Verify Email - Expected Response (200 OK)
+# {
+#   "message": "Email verified successfully"
+# }
+
+###############################################################################
+# 9. ❌ ERROR RESPONSES
+###############################################################################
+
+### 400 Bad Request - Invalid Input
+# {
+#   "statusCode": 400,
+#   "message": ["email must be an email", "password is required"],
+#   "error": "Bad Request"
+# }
+
+### 401 Unauthorized - Invalid Credentials
+# {
+#   "statusCode": 401,
+#   "message": "Invalid credentials",
+#   "error": "Unauthorized"
+# }
+
+### 401 Unauthorized - Invalid Token
+# {
+#   "statusCode": 401,
+#   "message": "Invalid or expired refresh token",
+#   "error": "Unauthorized"
+# }
+
+### 401 Unauthorized - Account Not Active
+# {
+#   "statusCode": 401,
+#   "message": "Account is not active",
+#   "error": "Unauthorized"
+# }
+
+### 404 Not Found - User Not Found
+# {
+#   "statusCode": 404,
+#   "message": "User not found",
+#   "error": "Not Found"
+# }
+
+###############################################################################
+# 10. 📝 IMPORTANT NOTES
+###############################################################################
+
+# 📌 JWT Token Structure:
+# - userId: User UUID
+# - email: User email
+# - sessionId: Session UUID
+# - NO ROLE (auth-service doesn't manage roles)
+
+# 📌 Token Expiration:
+# - Access Token: 2 hours (7200s)
+# - Refresh Token: 7 days
+# - Configurable via .env (JWT_EXPIRATION, JWT_REFRESH_EXPIRATION)
+
+# 📌 Session Management:
+# - One session created per login
+# - Sessions stored in sessions table
+# - Logout revokes the session
+# - Expired sessions can be cleaned automatically
+
+# 📌 Password Requirements:
+# - Minimum 8 characters
+# - At least 1 uppercase letter
+# - At least 1 lowercase letter
+# - At least 1 number
+# - At least 1 special character (@$!%*?&)
+
+# 📌 Google OAuth:
+# - Uses Authorization Code Flow (server-side)
+# - User auto-created with status ACTIVE
+# - Email automatically verified (emailVerified: true)
+# - No password stored for Google users
+# - Google ID stored if available
+
+# 📌 Internal Endpoints:
+# - /internal/* for service-to-service communication
+# - Should be protected by API Gateway in production
+# - X-Internal-Service header identifies caller
+# - User-service calls auth-service to sync user data
+
+###############################################################################
+# 11. 🛠️ TROUBLESHOOTING
+###############################################################################
+
+# ❌ Error: "Invalid credentials"
+# - Check email and password are correct
+# - Verify user exists in auth_users table
+# - Check user status is ACTIVE
+
+# ❌ Error: "Invalid or expired refresh token"
+# - Token expired (7 days default)
+# - Token revoked (user logged out)
+# - Login again to get new tokens
+
+# ❌ Error: "Account is not active"
+# - User status is not ACTIVE
+# - Check auth_users.status column
+# - Contact admin or verify email first
+
+# ❌ Error: "Account is locked"
+# - Too many failed login attempts
+# - Wait for automatic unlock (30 min)
+# - Admin can unlock manually
+
+# ❌ Error: "Email is already verified"
+# - Email already verified
+# - User can login normally
+
+# ❌ Error: "Cannot POST /auth/change-password"
+# - Route not found
+# - Check service is running
+# - Verify controller has the route
+
+# ❌ Google OAuth Error: "redirect_uri_mismatch"
+# - Add redirect URI in Google Cloud Console
+# - Must match exactly: http://localhost:3001/auth/google/redirect
+# - Wait 2-3 minutes for changes to propagate
+
+# ❌ Google OAuth Error: "Invalid Google token"
+# - Token expired or malformed
+# - Try logging in again
+
+###############################################################################
+# 12. 🗄️ DATABASE QUERIES (for debugging)
+###############################################################################
+
+# Check user in auth_users:
+# SELECT id, email, status, email_verified, failed_login_attempts, locked_until
+# FROM auth_users
+# WHERE email = 'admin@immo360.cm';
+
+# Check active sessions:
+# SELECT id, user_id, is_revoked, expires_at, created_at
+# FROM sessions
+# WHERE user_id = 'uuid-here' AND is_revoked = false;
+
+# Check refresh tokens:
+# SELECT id, user_id, is_revoked, expires_at, created_at
+# FROM refresh_tokens
+# WHERE user_id = 'uuid-here' AND is_revoked = false;
+
+# Check Google users:
+# SELECT id, email, status, email_verified, google_id
+# FROM auth_users
+# WHERE google_id IS NOT NULL;
+
+###############################################################################
+# 13. 🚀 QUICK START GUIDE
+###############################################################################
+
+# Step 1: Start auth-service
+# cd D:\backend\immo360-backend\services\auth-service
+# npm run start:dev
+
+# Step 2: Test basic login
+# Execute: 1.1 Login with Email/Password
+
+# Step 3: Copy tokens
+# Update @access_token and @refresh_token variables
+
+# Step 4: Test protected endpoints
+# Execute: 3.3 Logout
+# Execute: 4.1 Change Password
+
+# Step 5: Test Google OAuth
+# Open browser: http://localhost:3001/auth/google
+# Login with Google
+# Copy tokens from JSON response
+
+# Step 6: Test token refresh
+# Execute: 3.1 Refresh Access Token
+
+###############################################################################
+# 14. 📊 ARCHITECTURE SUMMARY
+###############################################################################
+
+# ✅ Clean Architecture (Hexagonal)
+# ✅ Domain-Driven Design
+# ✅ SOLID Principles
+# ✅ Dependency Injection (NestJS)
+# ✅ Repository Pattern
+# ✅ Use Case Pattern
+# ✅ JWT Authentication
+# ✅ Session Management
+# ✅ Google OAuth 2.0
+# ✅ TypeORM + PostgreSQL
+# ✅ Production Ready
+
+###############################################################################
+# END OF FILE
+###############################################################################

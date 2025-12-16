@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-auth-service
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      - NODE_ENV=development
+      - PORT=4001
+      - HOST=0.0.0.0
+      # Database
+      - DB_HOST=auth-db
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_auth
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=true
+      # JWT
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      - JWT_ACCESS_TOKEN_EXPIRATION=2h
+      - JWT_REFRESH_TOKEN_EXPIRATION=7d
+      # Security
+      - BCRYPT_SALT_ROUNDS=10
+      - MAX_LOGIN_ATTEMPTS=5
+      - ACCOUNT_LOCK_DURATION_MS=900000
+      # Session
+      - SESSION_CLEANUP_INTERVAL=3600000
+      - SESSION_MAX_INACTIVE_DURATION=2592000000
+      # Services
+      - USER_SERVICE_URL=http://user-service:4002
+      # Infrastructure
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - auth-db
+      - redis
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4001/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  auth-db:
+    image: postgres:15-alpine
+    container_name: immo360-auth-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=immo360_auth
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: immo360-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: immo360-rabbitmq
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=immo360
+      - RABBITMQ_DEFAULT_PASS=immo360
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  auth-db-data:
+  redis-data:
+  rabbitmq-data:
+
+networks:
+  immo360-network:
+    driver: bridge

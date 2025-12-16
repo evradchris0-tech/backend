@@ -1,0 +1,65 @@
+# ============================================
+# SYNC-SERVICE - Tests Directs (Port 4003)
+# ============================================
+
+### VARIABLES
+@baseUrl = http://localhost:4003
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### 1. Health Check
+GET {{baseUrl}}/history/health
+Authorization: Bearer {{accessToken}}
+
+### 2. Récupérer l'historique complet
+GET {{baseUrl}}/history
+Authorization: Bearer {{accessToken}}
+
+### 3. Filtrer par type d'événement
+GET {{baseUrl}}/history?eventType=user.created
+Authorization: Bearer {{accessToken}}
+
+### 4. Filtrer par service source
+GET {{baseUrl}}/history?sourceService=user-service
+Authorization: Bearer {{accessToken}}
+
+### 5. Filtrer par statut
+GET {{baseUrl}}/history?status=completed
+Authorization: Bearer {{accessToken}}
+
+### 6. Filtrer par plage de dates
+GET {{baseUrl}}/history?startDate=2025-01-01&endDate=2025-12-31
+Authorization: Bearer {{accessToken}}
+
+### 7. Récupérer l'historique d'une entité spécifique
+GET {{baseUrl}}/history/entity/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### 8. Récupérer les détails d'un événement
+GET {{baseUrl}}/history/event/{{eventId}}
+Authorization: Bearer {{accessToken}}
+
+### 9. Statistiques globales
+GET {{baseUrl}}/history/stats
+Authorization: Bearer {{accessToken}}
+
+### 10. Statistiques par service
+GET {{baseUrl}}/history/stats/service/user-service
+Authorization: Bearer {{accessToken}}
+
+### 11. Statistiques par type d'événement
+GET {{baseUrl}}/history/stats/type/user.created
+Authorization: Bearer {{accessToken}}
+
+### 12. Exporter l'historique en CSV
+GET {{baseUrl}}/history/export/csv?startDate=2025-01-01
+Authorization: Bearer {{accessToken}}
+
+### 13. Purger l'historique (Super Admin seulement)
+POST {{baseUrl}}/history/purge
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "olderThanDays": 90,
+  "eventTypes": ["user.created", "user.updated"]
+}04-gateway-proxy.http

@@ -1,0 +1,678 @@
+# Render Blueprint pour IMMO360 Backend
+# Documentation: https://render.com/docs/blueprint-spec
+
+databases:
+  # Base de données principale pour Auth Service
+  - name: immo360-auth-db
+    databaseName: immo360_auth
+    user: immo360_user
+    plan: free
+    region: frankfurt
+
+  # Base de données pour User Service
+  - name: immo360-user-db
+    databaseName: immoUser
+    user: immo360_user
+    plan: free
+    region: frankfurt
+
+  # Base de données pour Infrastructure Service
+  - name: immo360-infrastructure-db
+    databaseName: immo360_infrastructure
+    user: immo360_user
+    plan: free
+    region: frankfurt
+
+  # Base de données pour Equipment Service
+  - name: immo360-equipment-db
+    databaseName: immo360_equipment
+    user: immo360_user
+    plan: free
+    region: frankfurt
+
+  # Base de données pour Incidents Service
+  - name: immo360-incidents-db
+    databaseName: immo360_incidents
+    user: immo360_user
+    plan: free
+    region: frankfurt
+
+  # Base de données pour Audit Service
+  - name: immo360-audit-db
+    databaseName: immo360_audit
+    user: immo360_user
+    plan: free
+    region: frankfurt
+
+  # Base de données pour Analytics Service
+  - name: immo360-analytics-db
+    databaseName: immo360_analytics
+    user: immo360_user
+    plan: free
+    region: frankfurt
+
+  # Base de données pour Notifications Service
+  - name: immo360-notifications-db
+    databaseName: immo360_notifications
+    user: immo360_user
+    plan: free
+    region: frankfurt
+
+  # Base de données pour File Storage Service
+  - name: immo360-files-db
+    databaseName: immo360_files
+    user: immo360_user
+    plan: free
+    region: frankfurt
+
+services:
+  # ============================================
+  # REDIS - Cache partagé
+  # ============================================
+  - type: redis
+    name: immo360-redis
+    plan: free
+    region: frankfurt
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  # ============================================
+  # API GATEWAY - Point d'entrée principal
+  # ============================================
+  - type: web
+    name: immo360-api-gateway
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/api-gateway && npm install && npm run build
+    startCommand: cd services/api-gateway && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: immo360-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: immo360-redis
+          property: port
+      - key: AUTH_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-auth-service
+          property: host
+      - key: USER_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-user-service
+          property: host
+      - key: INFRASTRUCTURE_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-infrastructure-service
+          property: host
+      - key: EQUIPMENT_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-equipment-service
+          property: host
+      - key: INCIDENTS_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-incidents-service
+          property: host
+      - key: AUDIT_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-audit-service
+          property: host
+      - key: ANALYTICS_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-analytics-service
+          property: host
+      - key: NOTIFICATIONS_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-notifications-service
+          property: host
+      - key: FILE_STORAGE_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-file-storage-service
+          property: host
+      - key: IMPORT_EXPORT_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-import-export-service
+          property: host
+      - key: SYNC_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-sync-service
+          property: host
+      - key: PREDICTIONS_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-predictions-service
+          property: host
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # AUTH SERVICE - Authentification
+  # ============================================
+  - type: web
+    name: immo360-auth-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/auth-service && npm install && npm run build
+    startCommand: cd services/auth-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: immo360-auth-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: immo360-auth-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: immo360-auth-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: immo360-auth-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: immo360-auth-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TOKEN_EXPIRATION
+        value: 2h
+      - key: JWT_REFRESH_TOKEN_EXPIRATION
+        value: 7d
+      - key: BCRYPT_SALT_ROUNDS
+        value: 12
+      - key: SESSION_CLEANUP_INTERVAL
+        value: 3600000
+      - key: SESSION_MAX_INACTIVE_DURATION
+        value: 2592000000
+      - key: MAX_LOGIN_ATTEMPTS
+        value: 5
+      - key: ACCOUNT_LOCK_DURATION_MS
+        value: 900000
+      - key: USER_SERVICE_URL
+        fromService:
+          type: web
+          name: immo360-user-service
+          property: host
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # USER SERVICE - Gestion des utilisateurs
+  # ============================================
+  - type: web
+    name: immo360-user-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/user-service && npm install && npm run build
+    startCommand: cd services/user-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: immo360-user-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: immo360-user-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: immo360-user-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: immo360-user-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: immo360-user-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # INFRASTRUCTURE SERVICE - Gestion des biens
+  # ============================================
+  - type: web
+    name: immo360-infrastructure-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/infrastructure-service && npm install && npm run build
+    startCommand: cd services/infrastructure-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: immo360-infrastructure-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: immo360-infrastructure-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: immo360-infrastructure-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: immo360-infrastructure-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: immo360-infrastructure-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # EQUIPMENT SERVICE - Gestion des équipements
+  # ============================================
+  - type: web
+    name: immo360-equipment-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/equipment-service && npm install && npm run build
+    startCommand: cd services/equipment-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: immo360-equipment-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: immo360-equipment-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: immo360-equipment-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: immo360-equipment-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: immo360-equipment-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # INCIDENTS SERVICE - Gestion des incidents
+  # ============================================
+  - type: web
+    name: immo360-incidents-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/incidents-service && npm install && npm run build
+    startCommand: cd services/incidents-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: immo360-incidents-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: immo360-incidents-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: immo360-incidents-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: immo360-incidents-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: immo360-incidents-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # AUDIT SERVICE - Journalisation des actions
+  # ============================================
+  - type: web
+    name: immo360-audit-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/audit-service && npm install && npm run build
+    startCommand: cd services/audit-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: immo360-audit-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: immo360-audit-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: immo360-audit-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: immo360-audit-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: immo360-audit-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # ANALYTICS SERVICE - Analyses et statistiques
+  # ============================================
+  - type: web
+    name: immo360-analytics-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/analytics-service && npm install && npm run build
+    startCommand: cd services/analytics-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: immo360-analytics-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: immo360-analytics-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: immo360-analytics-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: immo360-analytics-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: immo360-analytics-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # NOTIFICATIONS SERVICE - Gestion des notifications
+  # ============================================
+  - type: web
+    name: immo360-notifications-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/notifications-service && npm install && npm run build
+    startCommand: cd services/notifications-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: immo360-notifications-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: immo360-notifications-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: immo360-notifications-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: immo360-notifications-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: immo360-notifications-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # FILE STORAGE SERVICE - Stockage de fichiers
+  # ============================================
+  - type: web
+    name: immo360-file-storage-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/file-storage-service && npm install && npm run build
+    startCommand: cd services/file-storage-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DB_HOST
+        fromDatabase:
+          name: immo360-files-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: immo360-files-db
+          property: port
+      - key: DB_USERNAME
+        fromDatabase:
+          name: immo360-files-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: immo360-files-db
+          property: password
+      - key: DB_DATABASE
+        fromDatabase:
+          name: immo360-files-db
+          property: database
+      - key: DB_SYNCHRONIZE
+        value: true
+      - key: DB_LOGGING
+        value: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # IMPORT/EXPORT SERVICE - Import/Export de données
+  # ============================================
+  - type: web
+    name: immo360-import-export-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/import-export-service && npm install && npm run build
+    startCommand: cd services/import-export-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # SYNC SERVICE - Synchronisation
+  # ============================================
+  - type: web
+    name: immo360-sync-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/sync-service && npm install && npm run build
+    startCommand: cd services/sync-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: JWT_SECRET
+        generateValue: true
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: immo360-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: immo360-redis
+          property: port
+      - key: RABBITMQ_URL
+        sync: false
+
+  # ============================================
+  # PREDICTIONS SERVICE - Service de prédictions
+  # ============================================
+  - type: web
+    name: immo360-predictions-service
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: cd services/predictions-service && npm install && npm run build
+    startCommand: cd services/predictions-service && npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RABBITMQ_URL
+        sync: false

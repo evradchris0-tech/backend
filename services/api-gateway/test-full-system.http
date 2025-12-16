@@ -1,0 +1,109 @@
+### ============================================
+### HEALTH CHECKS
+### ============================================
+
+### Health API Gateway
+GET http://localhost:3000/health
+
+### Health Auth Service (direct)
+GET http://localhost:3001/auth/health
+
+### Health Sync Service (direct)
+GET http://localhost:3003/history/health
+
+### ============================================
+### AUTHENTIFICATION
+### ============================================
+
+### Login via Gateway
+POST http://localhost:3000/auth/login
+Content-Type: application/json
+
+{
+    "email": "superadmin@immo360.com",
+    "password": "NewAdmin@2025!"
+}
+
+### Login direct Auth Service
+POST http://localhost:3001/auth/login
+Content-Type: application/json
+
+{
+    "email": "superadmin@immo360.com",
+    "password": "NewAdmin@2025!"
+}
+
+### ============================================
+### USERS (via Gateway - necessite JWT)
+### ============================================
+
+### Get all users
+# Remplacer <TOKEN> par le accessToken recu du login
+GET http://localhost:3000/users
+Authorization: Bearer <TOKEN>
+
+### Get user by ID
+GET http://localhost:3000/users/<USER_ID>
+Authorization: Bearer <TOKEN>
+
+### Create user
+POST http://localhost:3000/users
+Content-Type: application/json
+Authorization: Bearer <TOKEN>
+
+{
+    "email": "test.user@immo360.com",
+    "firstName": "Test",
+    "lastName": "User",
+    "role": "OCCUPANT"
+}
+
+### Update user
+PATCH http://localhost:3000/users/<USER_ID>
+Content-Type: application/json
+Authorization: Bearer <TOKEN>
+
+{
+    "firstName": "Updated",
+    "lastName": "Name"
+}
+
+### Delete user
+DELETE http://localhost:3000/users/<USER_ID>
+Authorization: Bearer <TOKEN>
+
+### ============================================
+### SYNC SERVICE - HISTORY
+### ============================================
+
+### Get operation history
+GET http://localhost:3003/history
+
+### Get history with filters
+GET http://localhost:3003/history?status=SUCCESS&limit=10
+
+### Get stats
+GET http://localhost:3003/history/stats
+
+### Get entity history
+GET http://localhost:3003/history/entity/<USER_ID>
+
+### ============================================
+### REFRESH TOKEN
+### ============================================
+
+### Refresh token
+POST http://localhost:3000/auth/refresh
+Content-Type: application/json
+
+{
+    "refreshToken": "<REFRESH_TOKEN>"
+}
+
+### ============================================
+### LOGOUT
+### ============================================
+
+### Logout
+POST http://localhost:3000/auth/logout
+Authorization: Bearer <TOKEN>

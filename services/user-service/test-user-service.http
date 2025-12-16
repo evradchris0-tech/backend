@@ -1,0 +1,38 @@
+### User-Service Health Check
+GET http://localhost:3001/health
+Accept: application/json
+
+### Get User-Service Status
+GET http://localhost:3001/api/users/status
+Accept: application/json
+
+### Import Users from Excel (Step 1: REQUIRED)
+POST http://localhost:3001/api/users/import/upload
+Content-Type: multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW
+
+------WebKitFormBoundary7MA4YWxkTrZu0gW
+Content-Disposition: form-data; name="file"; filename="test-users.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./test-data/test-users.xlsx
+------WebKitFormBoundary7MA4YWxkTrZu0gW--
+
+### Get Import Status by Event ID (use eventId from previous response)
+GET http://localhost:3001/api/users/import/status/evt_test_123
+Accept: application/json
+
+### List All Users (verify they were created)
+GET http://localhost:3001/api/users
+Accept: application/json
+
+### Get Single User Details
+GET http://localhost:3001/api/users/usr_test_001
+Accept: application/json
+
+### Get Users by Role (should all be OCCUPANT)
+GET http://localhost:3001/api/users?role=OCCUPANT
+Accept: application/json
+
+### Get Verified Users Only (should all be true)
+GET http://localhost:3001/api/users?isVerified=true
+Accept: application/json

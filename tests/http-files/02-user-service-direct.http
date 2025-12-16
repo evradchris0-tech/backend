@@ -1,0 +1,88 @@
+# ============================================
+# USER-SERVICE - Tests Directs (Port 4002)
+# ============================================
+
+### VARIABLES (utilise le token d'auth-service)
+@baseUrl = http://localhost:4002
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### 1. Créer un nouvel utilisateur (Super Admin seulement)
+# @name createUser
+POST {{baseUrl}}/users
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "email": "newuser@immo360.cm",
+  "firstName": "Nouveau",
+  "lastName": "Utilisateur",
+  "role": "field_agent",
+  "phoneNumber": "+237690000001"
+}
+
+### 2. Récupérer userId
+@newUserId = {{createUser.response.body.$.id}}
+
+### 3. Lister tous les utilisateurs
+GET {{baseUrl}}/users
+Authorization: Bearer {{accessToken}}
+
+### 4. Filtrer par rôle
+GET {{baseUrl}}/users?role=admin
+Authorization: Bearer {{accessToken}}
+
+### 5. Recherche par email
+GET {{baseUrl}}/users?search=chris
+Authorization: Bearer {{accessToken}}
+
+### 6. Pagination
+GET {{baseUrl}}/users?page=1&limit=10
+Authorization: Bearer {{accessToken}}
+
+### 7. Récupérer un utilisateur spécifique
+GET {{baseUrl}}/users/{{newUserId}}
+Authorization: Bearer {{accessToken}}
+
+### 8. Mettre à jour un utilisateur
+PATCH {{baseUrl}}/users/{{newUserId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Nouveau Modifié",
+  "phoneNumber": "+237690000002"
+}
+
+### 9. Assigner une chambre à un occupant
+PATCH {{baseUrl}}/users/{{newUserId}}/assign-room
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "roomId": "room-uuid-here",
+  "startDate": "2025-01-01"
+}
+
+### 10. Désactiver un utilisateur
+PATCH {{baseUrl}}/users/{{newUserId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "isActive": false
+}
+
+### 11. Supprimer un utilisateur (soft delete)
+DELETE {{baseUrl}}/users/{{newUserId}}
+Authorization: Bearer {{accessToken}}
+
+### 12. Télécharger template Excel
+GET {{baseUrl}}/users/import/template
+Authorization: Bearer {{accessToken}}
+
+### 13. Valider un fichier Excel (nécessite Postman pour upload)
+# Voir section Postman ci-dessous
+
+### 14. Exporter les utilisateurs
+GET {{baseUrl}}/users/import/export?format=xlsx
+Authorization: Bearer {{accessToken}}

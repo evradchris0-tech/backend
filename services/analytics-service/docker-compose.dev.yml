@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  analytics-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: immo360-analytics-service
+    restart: unless-stopped
+    ports:
+      - "4007:4007"
+    environment:
+      - NODE_ENV=development
+      - PORT=4007
+      - HOST=0.0.0.0
+      # Database
+      - DB_HOST=analytics-db
+      - DB_PORT=5432
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - DB_DATABASE=immo360_analytics
+      - DB_SYNCHRONIZE=true
+      - DB_LOGGING=true
+      # JWT
+      - JWT_SECRET=dev-secret-change-in-production-minimum-32-characters
+      # Infrastructure
+      - RABBITMQ_URL=amqp://immo360:immo360@rabbitmq:5672
+    depends_on:
+      - analytics-db
+      - rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4007/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  analytics-db:
+    image: postgres:15-alpine
+    container_name: immo360-analytics-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=immo360_analytics
+    ports:
+      - "5439:5432"
+    volumes:
+      - analytics-db-data:/var/lib/postgresql/data
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: immo360-rabbitmq
+    restart: unless-stopped
+    environment:
+      - RABBITMQ_DEFAULT_USER=immo360
+      - RABBITMQ_DEFAULT_PASS=immo360
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    networks:
+      - immo360-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  analytics-db-data:
+  rabbitmq-data:
+
+networks:
+  immo360-network:
+    driver: bridge

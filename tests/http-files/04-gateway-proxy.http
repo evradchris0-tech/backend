@@ -1,0 +1,92 @@
+# ============================================
+# API-GATEWAY - Tests via Proxy (Port 4000)
+# ============================================
+
+### VARIABLES
+@baseUrl = http://localhost:4000
+@accessToken = YOUR_ACCESS_TOKEN_HERE
+
+### ===== AUTH ENDPOINTS (via Gateway) =====
+
+### 1. Health Check Gateway
+GET {{baseUrl}}/health
+
+### 2. Login via Gateway
+# @name loginGateway
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "chrisomgba04@gmail.com",
+  "password": "Password@123"
+}
+
+### 3. Profil via Gateway
+GET {{baseUrl}}/auth/profile
+Authorization: Bearer {{accessToken}}
+
+### 4. Refresh via Gateway
+POST {{baseUrl}}/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ===== USER ENDPOINTS (via Gateway) =====
+
+### 5. Lister utilisateurs via Gateway
+GET {{baseUrl}}/users
+Authorization: Bearer {{accessToken}}
+
+### 6. Créer utilisateur via Gateway
+POST {{baseUrl}}/users
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "email": "gateway-test@immo360.cm",
+  "firstName": "Gateway",
+  "lastName": "Test",
+  "role": "field_agent"
+}
+
+### 7. Récupérer utilisateur via Gateway
+GET {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+
+### 8. Mettre à jour via Gateway
+PATCH {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "firstName": "Updated via Gateway"
+}
+
+### 9. Template Excel via Gateway
+GET {{baseUrl}}/users/import/template
+Authorization: Bearer {{accessToken}}
+
+### ===== TESTS DE CACHE (Gateway) =====
+
+### 10. Premier appel (miss cache)
+GET {{baseUrl}}/users
+Authorization: Bearer {{accessToken}}
+
+### 11. Deuxième appel (hit cache)
+GET {{baseUrl}}/users
+Authorization: Bearer {{accessToken}}
+
+### 12. Après modification (cache invalidé)
+PATCH {{baseUrl}}/users/{{userId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "phoneNumber": "+237699999999"
+}
+
+### 13. Vérifier cache invalidé
+GET {{baseUrl}}/users
+Authorization: Bearer {{accessToken}}

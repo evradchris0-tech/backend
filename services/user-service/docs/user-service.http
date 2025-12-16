@@ -1,0 +1,373 @@
+###############################################################################
+# 👥 USER-SERVICE - COMPLETE API TESTS
+# Base URL: http://localhost:3002
+# NestJS Clean Architecture
+
+
+###############################################################################
+POST http://localhost:3002/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInNlc3Npb25JZCI6IjA1ZmNkNWM0LTY5NDUtNDkzOC04MzRkLTZhNzU5ZjEwOTQyMCIsImlhdCI6MTc2NTExNDQ4OCwiZXhwIjoxNzY1MTE4MDg4fQ.-OPRAfjhcwfyt_7h6bL9dYtFLBds52MWiXv22WxuU5E
+Content-Type: application/json
+
+{
+  "email": "annerosetchacim24@gmail.com",
+  "firstName": "Test",
+  "lastName": "Sync",
+  "role": "ADMINISTRATOR"
+}
+
+### 📌 VARIABLES (Update from auth-service login)
+@base_url = http://localhost:3000
+@access_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInNlc3Npb25JZCI6ImIyMzAzMDk5LWIyNzktNGEzZC05ODk4LTM3OWJhYjBkZGI5ZiIsImlhdCI6MTc2NTEyNzA0OCwiZXhwIjoxNzY1MTMwNjQ4fQ.gtOQ3hNG_ALawjmDmrzfZdnwnccZ_Cht_2dI4GC3uVU
+@user_id =186a35c1-f54f-458d-8f39-b0ea615a4164
+
+
+###############################################################################
+# 1. 👤 CREATE USERS
+
+
+###############################################################################
+
+### 1. Créer le SUPERADMIN
+
+POST http://localhost:3002/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInNlc3Npb25JZCI6IjEyNTc5MDFjLWVhODMtNGRkOC1hMTc1LWMxNDRkNmYzMzkwYSIsImlhdCI6MTc2NTAzNzQ0NCwiZXhwIjoxNzY1MDQxMDQ0fQ.ClkWm2D6_tqxAaE65W-RrMiTS24NmA7y7Wo8sbB_AAQ
+Content-Type: application/json
+
+{
+  "email": "superadmin@immo360.cm",
+  "firstName": "Super",
+  "lastName": "Admin",
+  "role": "SUPERADMIN"
+}
+###
+
+POST http://localhost:3002/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIxODZhMzVjMS1mNTRmLTQ1OGQtOGYzOS1iMGVhNjE1YTQxNjQiLCJlbWFpbCI6InN1cGVyYWRtaW5AaW1tbzM2MC5jbSIsInNlc3Npb25JZCI6Ijg4OGU3ZDhhLTU0MWMtNGEyMy1hNTE5LTI2NjRlNjVlNjk2MyIsImlhdCI6MTc2NTA0NDA4NCwiZXhwIjoxNzY1MDQ3Njg0fQ.tKT7SURC3D0eikiOG8PAoXR4K224iIfQc8GJZURGRqw
+Content-Type: application/json
+
+{
+  "email": "superadmin@immo360.cm",
+  "firstName": "Admin",
+  "lastName": "Principal",
+  "role": "ADMINISTRATOR"
+}
+
+### 1.1 Create SUPERADMIN
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "superadmin1@immo360.cm",
+  "firstName": "Super",
+  "lastName": "Admin",
+  "role": "SUPERADMIN"
+}
+
+
+###
+
+
+### 1.2 Create ADMINISTRATOR
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "admin@immo360.cm",
+  "firstName": "Admin",
+  "lastName": "Principal",
+  "role": "ADMINISTRATOR"
+}
+
+
+###
+
+
+### 1.3 Create SUPERVISOR
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "supervisor2@immo360.cm",
+  "firstName": "Superviseur2",
+  "lastName": "Principal",
+  "role": "SUPERVISOR"
+}
+
+
+###
+
+
+### 1.4 Create AGENT_TERRAIN
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "agent@immo360.cm",
+  "firstName": "Agent",
+  "lastName": "Terrain",
+  "role": "AGENT_TERRAIN"
+}
+
+
+###
+
+
+### 1.5 Create OCCUPANT (Chambre 205)
+POST {{base_url}}/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "awsomgba@gmail.com",
+  "firstName": "AWS",
+  "lastName": "Evrad",
+  "role": "OCCUPANT",
+  "roomId": "RDC-205",
+  "roomNumber": "205",
+  "academicSessionId": "2025-2026"
+}
+####
+
+#####
+POST http://localhost:3001/auth/verify-email
+Content-Type: application/json
+
+{
+  "email": "awsomgba@gmail.com",
+  "code": "436364"
+}
+###
+
+
+###############################################################################
+# 2. 📋 GET USERS (Pagination & Filters)
+
+
+###############################################################################
+
+
+### 2.1 Get All Users (Page 1)
+GET {{base_url}}/users?page=1&limit=10
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+### 2.2 Get Users (Page 2)
+GET {{base_url}}/users?page=2&limit=5
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+### 2.3 Filter by Role: ADMINISTRATOR
+GET {{base_url}}/users?role=ADMINISTRATOR
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+### 2.4 Filter by Role: OCCUPANT
+GET {{base_url}}/users?role=OCCUPANT
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+### 2.5 Filter by Status: ACTIVE
+GET {{base_url}}/users?status=ACTIVE
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+### 2.6 Search by Email
+GET {{base_url}}/users?search=admin
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+### 2.7 Combined Filters
+GET {{base_url}}/users?role=OCCUPANT&status=ACTIVE&search=jean
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+###############################################################################
+# 3. 🔍 GET USER BY ID
+
+
+###############################################################################
+
+
+### 3.1 Get User Details
+GET {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+###############################################################################
+# 4. ✏️ UPDATE USERS
+
+
+###############################################################################
+
+
+### 4.1 Update User Name
+PATCH {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "firstName": "Jean Updated",
+  "lastName": "Dupont Updated"
+}
+
+
+###
+
+
+### 4.2 Update User Status (Activate)
+PATCH {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "status": "ACTIVE"
+}
+
+
+###
+
+
+### 4.3 Update User Status (Deactivate)
+PATCH {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "status": "INACTIVE"
+}
+
+
+###
+
+
+###############################################################################
+# 5. 🏠 ASSIGN ROOM TO OCCUPANT
+
+
+###############################################################################
+
+
+### 5.1 Assign Room
+PATCH {{base_url}}/users/{{user_id}}/assign-room
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "roomId": "ETAGE2-305",
+  "roomNumber": "305",
+  "academicSessionId": "2025-2026"
+}
+
+
+###
+
+
+### 5.2 Reassign to New Room
+PATCH {{base_url}}/users/{{user_id}}/assign-room
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "roomId": "CITE-412",
+  "roomNumber": "412",
+  "academicSessionId": "2025-2026"
+}
+
+
+###
+
+
+###############################################################################
+# 6. 🗑️ DELETE USER
+
+
+###############################################################################
+
+
+### 6.1 Delete User (Soft Delete)
+DELETE {{base_url}}/users/{{user_id}}
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+###############################################################################
+# 7. 📥 IMPORT OCCUPANTS (Excel)
+
+
+###############################################################################
+
+
+### 7.1 Download Import Template
+GET {{base_url}}/users/import/template
+Authorization: Bearer {{access_token}}
+
+
+###
+
+
+### 7.2 Import Occupants via Excel
+# ⚠️ Use Postman or Thunder Client for file upload
+# POST {{base_url}}/users/import/occupants
+# Authorization: Bearer {{access_token}}
+# Content-Type: multipart/form-data
+#
+# Form fields:
+# - file: @path/to/occupants.xlsx
+# - academicSessionId: 2025-2026
+
+
+###############################################################################
+# END OF FILE
+
+
+###############################################################################
+POST http://localhost:3001/auth/login
+Content-Type: application/json
+
+{
+  "email": "superadmin@immo360.cm",
+  "password": "NewAdmin@2025!"
+}
+
+##################
+POST http://localhost:3002/users
+Authorization: Bearer {{access_token}}
+Content-Type: application/json
+
+{
+  "email": "t12676684@gmail.com",
+  "firstName": "Agent",
+  "lastName": "Terrain",
+  "role": "AGENT_TERRAIN"
+}
