@@ -1,5 +1,8 @@
 // src/application/dtos/auth-response.dto.ts
 
+/**
+ * DTO de réponse d'authentification
+ */
 export class AuthResponseDto {
     accessToken: string;
     refreshToken: string;
@@ -8,7 +11,10 @@ export class AuthResponseDto {
     user: {
         id: string;
         email: string;
-        // Note: On ne retourne que l'id et email ici
-        // Le frontend devra appeler user-service pour obtenir le profil complet
+        firstName: string;
+        lastName: string;
+        role: string;
+        status: string;
+        emailVerified: boolean;
     };
 }

@@ -7,22 +7,22 @@ export class RefreshTokenEntity extends BaseEntity {
     private _token: string;
     private _expiresAt: Date;
     private _isRevoked: boolean;
-    private _sessionId: string;
+    private _revokedAt: Date | null;
 
     constructor(
         id: string,
         userId: string,
         token: string,
         expiresAt: Date,
-        sessionId: string,
         isRevoked: boolean = false,
+        revokedAt: Date | null = null,
     ) {
         super(id);
         this._userId = userId;
         this._token = token;
         this._expiresAt = expiresAt;
-        this._sessionId = sessionId;
         this._isRevoked = isRevoked;
+        this._revokedAt = revokedAt;
     }
 
     // Getters
@@ -42,21 +42,19 @@ export class RefreshTokenEntity extends BaseEntity {
         return this._isRevoked;
     }
 
-    get sessionId(): string {
-        return this._sessionId;
+    // ✅ VÉRIFIER QUE CE GETTER EXISTE
+    get revokedAt(): Date | null {
+        return this._revokedAt;
     }
 
-    // Business logic methods
+    // Business methods
     isExpired(): boolean {
         return new Date() > this._expiresAt;
     }
 
-    isValid(): boolean {
-        return !this._isRevoked && !this.isExpired();
-    }
-
     revoke(): void {
         this._isRevoked = true;
+        this._revokedAt = new Date();
         this.touch();
     }
 }

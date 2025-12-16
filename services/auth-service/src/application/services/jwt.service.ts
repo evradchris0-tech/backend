@@ -1,79 +1,127 @@
 // src/application/services/jwt.service.ts
 
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService as NestJwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { JwtPayload } from '../dtos/jwt-payload.dto';
-import { normalizeJwtExpiration, normalizeRefreshTokenExpiration } from '../../config/jwt.config';
+import { AuthUserEntity } from '../../domain/entities/auth-user.entity';
+import { UserServiceClient } from './user-service-client.service';
 
+/**
+ * Service de gestion des tokens JWT
+ * Génère des tokens contenant le rôle et le statut de l'utilisateur
+ */
 @Injectable()
 export class JwtTokenService {
-    private readonly accessTokenSecret: string;
-    private readonly accessTokenExpiresIn: string;
-    private readonly refreshTokenSecret: string;
-    private readonly refreshTokenExpiresIn: string;
+    private readonly logger = new Logger(JwtTokenService.name);
+    private readonly accessTokenExpiration: string;
+    private readonly refreshTokenExpiration: string;
 
     constructor(
         private readonly jwtService: NestJwtService,
         private readonly configService: ConfigService,
+        private readonly userServiceClient: UserServiceClient,
     ) {
-        this.accessTokenSecret = this.configService.get<string>('JWT_SECRET');
-        this.accessTokenExpiresIn = normalizeJwtExpiration(this.configService);
-        this.refreshTokenSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
-        this.refreshTokenExpiresIn = normalizeRefreshTokenExpiration(this.configService);
+        this.accessTokenExpiration = this.configService.get<string>(
+            'JWT_EXPIRATION',
+            '2h',
+        );
+        this.refreshTokenExpiration = this.configService.get<string>(
+            'JWT_REFRESH_EXPIRATION',
+            '7d',
+        );
     }
 
-    generateAccessToken(payload: JwtPayload): string {
+    /**
+     * Génère un Access Token JWT avec rôle et statut
+     * @param user - Entité AuthUser
+     * @param sessionId - ID de la session
+     * @returns Token JWT signé
+     */
+    async generateAccessToken(
+        user: AuthUserEntity,
+        sessionId: string,
+    ): Promise<string> {
+        try {
+            // ✅ RÉCUPÉRER LE PROFIL COMPLET depuis User-Service
+            this.logger.debug(`Generating access token for user ${user.id}`);
+            
+            const userProfile = await this.userServiceClient.getUserProfile(user.id);
+
+            // ✅ PAYLOAD COMPLET avec ROLE + STATUS
+            const payload: JwtPayload = {
+                userId: user.id,
+                email: user.email,
+                sessionId: sessionId,
+                role: userProfile.role,              // ✅ DEPUIS USER-SERVICE
+                status: userProfile.status,          // ✅ DEPUIS USER-SERVICE
+                typeUtilisateur: userProfile.role,   // ✅ ALIAS pour compatibilité CDC
+            };
+
+            const token = this.jwtService.sign(payload, {
+                expiresIn: this.accessTokenExpiration,
+                secret: this.configService.get<string>('JWT_SECRET'),
+            });
+
+            this.logger.debug(
+                `✅ Access token generated for ${user.email} (${userProfile.role})`,
+            );
+
+            return token;
+        } catch (error) {
+            this.logger.error(
+                `Failed to generate access token for user ${user.id}: ${error.message}`,
+            );
+            throw error;
+        }
+    }
+
+    /**
+     * Génère un Refresh Token JWT
+     * @param userId - ID de l'utilisateur
+     * @param sessionId - ID de la session
+     * @returns Refresh token signé
+     */
+    generateRefreshToken(userId: string, sessionId: string): string {
+        const payload = {
+            userId,
+            sessionId,
+            type: 'refresh',
+        };
+
         return this.jwtService.sign(payload, {
-            secret: this.accessTokenSecret,
-            expiresIn: this.accessTokenExpiresIn,
+            expiresIn: this.refreshTokenExpiration,
+            secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
         });
     }
 
-    generateRefreshToken(payload: JwtPayload): string {
-        return this.jwtService.sign(payload, {
-            secret: this.refreshTokenSecret,
-            expiresIn: this.refreshTokenExpiresIn,
-        });
+    /**
+     * Vérifie et décode un token JWT
+     * @param token - Token à vérifier
+     * @returns Payload décodé
+     */
+    async verifyToken(token: string): Promise<JwtPayload> {
+        try {
+            return this.jwtService.verify(token, {
+                secret: this.configService.get<string>('JWT_SECRET'),
+            });
+        } catch (error) {
+            this.logger.error(`Token verification failed: ${error.message}`);
+            throw new Error('Invalid or expired token');
+        }
     }
 
-    verifyAccessToken(token: string): JwtPayload {
-        return this.jwtService.verify<JwtPayload>(token, {
-            secret: this.accessTokenSecret,
-        });
-    }
-
-    verifyRefreshToken(token: string): JwtPayload {
-        return this.jwtService.verify<JwtPayload>(token, {
-            secret: this.refreshTokenSecret,
-        });
-    }
-
-    getAccessTokenExpiration(): Date {
-        const expiresIn = this.parseExpiration(this.accessTokenExpiresIn);
-        return new Date(Date.now() + expiresIn);
-    }
-
-    getRefreshTokenExpiration(): Date {
-        const expiresIn = this.parseExpiration(this.refreshTokenExpiresIn);
-        return new Date(Date.now() + expiresIn);
-    }
-
-    private parseExpiration(expiration: string): number {
-        const unit = expiration.slice(-1);
-        const value = parseInt(expiration.slice(0, -1), 10);
-
-        switch (unit) {
-            case 's':
-                return value * 1000;
-            case 'm':
-                return value * 60 * 1000;
-            case 'h':
-                return value * 60 * 60 * 1000;
-            case 'd':
-                return value * 24 * 60 * 60 * 1000;
-            default:
-                return 3600000; // Default: 1 hour
+    /**
+     * Décode un token sans vérification (pour debug)
+     * @param token - Token à décoder
+     * @returns Payload décodé
+     */
+    decodeToken(token: string): JwtPayload | null {
+        try {
+            return this.jwtService.decode(token) as JwtPayload;
+        } catch (error) {
+            this.logger.error(`Token decoding failed: ${error.message}`);
+            return null;
         }
     }
 }

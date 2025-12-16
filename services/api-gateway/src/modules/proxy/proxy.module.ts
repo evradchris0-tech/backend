@@ -1,13 +1,18 @@
-import { Module } from '@nestjs/common';
+// src/modules/proxy/proxy.module.ts
+
+import { Module, Global } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ProxyService } from './proxy.service';
-import { ProxyController } from './proxy.controller';
-import { CacheModule } from '../cache/cache.module';
-import { AuthModule } from '../auth/auth.module';
 
+@Global()
 @Module({
-    imports: [HttpModule, CacheModule, AuthModule],
+    imports: [
+        HttpModule.register({
+            timeout: 30000,
+            maxRedirects: 3,
+        }),
+    ],
     providers: [ProxyService],
-    controllers: [ProxyController],
+    exports: [ProxyService],
 })
-export class ProxyModule { }
+export class ProxyModule {}

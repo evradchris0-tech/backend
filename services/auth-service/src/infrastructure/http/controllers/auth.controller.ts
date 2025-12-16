@@ -39,6 +39,9 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Ip } from '../../../common/decorators/ip.decorator';
 import { UserAgent } from '../../../common/decorators/user-agent.decorator';
 import { IAuthUserRepository } from '../../../domain/repositories/auth-user.repository.interface';
+import { LogoutDto } from '@application/dtos/logout.dto';
+import { JwtPayloadExtended } from '../../../common/interfaces/jwt-payload.interface';
+
 
 @Controller('auth')
 export class AuthController {
@@ -186,20 +189,25 @@ export class AuthController {
     /**
      * Logout endpoint - CORRIGÉ: passe sessionId au lieu de userId
      */
-    @UseGuards(JwtAuthGuard)
     @Post('logout')
+    @UseGuards(JwtAuthGuard)
     @HttpCode(HttpStatus.OK)
-    async logout(@CurrentUser() user: any) {
-        // CORRECTION: Utiliser sessionId du JWT payload, pas userId
-        const sessionId = user.sessionId;
+    async logout(@Body() logoutDto: LogoutDto, @Req() req: Request) {
+        // ✅ Type assertion pour accéder à userId
+        const user = req.user as JwtPayloadExtended;
 
-        if (!sessionId) {
-            throw new BadRequestException('Session ID not found in token');
+        if (!user?.userId) {
+            throw new BadRequestException('User ID not found in request');
         }
 
-        await this.logoutUseCase.execute(sessionId);
-        return { message: 'Logged out successfully' };
+        await this.logoutUseCase.execute(logoutDto, user.userId);
+
+        return {
+            success: true,
+            message: 'Logged out successfully',
+        };
     }
+
 
     @UseGuards(JwtAuthGuard)
     @Patch('change-password')

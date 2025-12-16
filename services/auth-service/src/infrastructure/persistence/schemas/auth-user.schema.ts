@@ -35,6 +35,15 @@ export class AuthUserSchema {
     @Column({ name: 'google_id', type: 'varchar', length: 255, nullable: true, unique: true })
     googleId: string | null;
 
+    @Column({
+        name: 'role',
+        type: 'varchar',
+        length: 50,
+        nullable: true,
+        comment: 'Rôle synchronisé depuis User-Service via RabbitMQ'
+    })
+    role: string | null;
+
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 

@@ -1,11 +1,20 @@
-import { Injectable, ExecutionContext, UnauthorizedException } from '@nestjs/common';
+// src/common/guards/jwt-auth.guard.ts
+
+import {
+    Injectable,
+    ExecutionContext,
+    UnauthorizedException,
+    Logger,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
-    constructor(private reflector: Reflector) {
+    private readonly logger = new Logger(JwtAuthGuard.name);
+
+    constructor(private readonly reflector: Reflector) {
         super();
     }
 
@@ -22,10 +31,44 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         return super.canActivate(context);
     }
 
-    handleRequest(err: any, user: any, info: any) {
-        if (err || !user) {
-            throw err || new UnauthorizedException('Invalid or expired token');
+    handleRequest<TUser = any>(
+        err: any,
+        user: TUser,
+        info: any,
+        context: ExecutionContext,
+    ): TUser {
+        const request = context.switchToHttp().getRequest();
+
+        if (err) {
+            this.logger.warn(`Auth error: ${err.message}`);
+            throw err;
         }
+
+        if (info?.name === 'TokenExpiredError') {
+            throw new UnauthorizedException({
+                statusCode: 401,
+                message: 'Token expire',
+                error: 'TOKEN_EXPIRED',
+            });
+        }
+
+        if (info?.name === 'JsonWebTokenError') {
+            throw new UnauthorizedException({
+                statusCode: 401,
+                message: 'Token invalide',
+                error: 'INVALID_TOKEN',
+            });
+        }
+
+        if (!user) {
+            const message = info?.message || 'Authentification requise';
+            throw new UnauthorizedException({
+                statusCode: 401,
+                message,
+                error: 'UNAUTHORIZED',
+            });
+        }
+
         return user;
     }
 }

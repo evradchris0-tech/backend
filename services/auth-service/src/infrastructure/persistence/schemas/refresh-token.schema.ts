@@ -1,12 +1,12 @@
 // src/infrastructure/persistence/schemas/refresh-token.schema.ts
 
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 'typeorm';
 
 @Entity('refresh_tokens')
+@Index(['userId'])
 @Index(['token'])
-@Index(['userId', 'isRevoked'])
 export class RefreshTokenSchema {
-    @PrimaryColumn('uuid')
+    @PrimaryGeneratedColumn('uuid')
     id: string;
 
     @Column({ name: 'user_id', type: 'uuid' })
@@ -18,15 +18,12 @@ export class RefreshTokenSchema {
     @Column({ name: 'expires_at', type: 'timestamp' })
     expiresAt: Date;
 
-    @Column({ name: 'session_id', type: 'uuid' })
-    sessionId: string;
-
-    @Column({ name: 'is_revoked', default: false })
+    @Column({ name: 'is_revoked', type: 'boolean', default: false })
     isRevoked: boolean;
+
+    @Column({ name: 'revoked_at', type: 'timestamp', nullable: true })
+    revokedAt: Date | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
-
-    @UpdateDateColumn({ name: 'updated_at' })
-    updatedAt: Date;
 }

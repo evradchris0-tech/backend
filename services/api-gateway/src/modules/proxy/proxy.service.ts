@@ -1,88 +1,145 @@
-import { Injectable, HttpException } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
+// src/modules/proxy/proxy.service.ts
+
+import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { firstValueFrom } from 'rxjs';
-import { AxiosRequestConfig, AxiosError } from 'axios';
+import { HttpService } from '@nestjs/axios';
+import { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
+import { firstValueFrom, timeout, catchError } from 'rxjs';
+
+export type ServiceType = 'auth' | 'user' | 'infrastructure' | 'incident' | 'notification';
+
+export interface ProxyRequestOptions {
+    service: ServiceType;
+    path: string;
+    method: Method;
+    data?: any;
+    headers?: Record<string, string>;
+    params?: Record<string, any>;
+}
+
+export interface ServiceHealth {
+    service: string;
+    status: 'healthy' | 'unhealthy';
+    responseTime?: number;
+    error?: string;
+}
 
 @Injectable()
 export class ProxyService {
+    private readonly logger = new Logger(ProxyService.name);
+
     constructor(
         private readonly httpService: HttpService,
         private readonly configService: ConfigService,
-    ) { }
+    ) {}
 
-    async forward(
-        serviceName: string,
-        path: string,
-        method: string,
-        data?: any,
-        headers?: any,
-    ): Promise<any> {
-        const serviceUrl = this.getServiceUrl(serviceName);
-        const url = `${serviceUrl}${path}`;
+    async forward<T = any>(options: ProxyRequestOptions): Promise<T> {
+        const { service, path, method, data, headers, params } = options;
 
-        // Nettoyer les headers (enlever host, content-length, etc.)
-        const cleanHeaders = this.cleanHeaders(headers);
+        const serviceConfig = this.configService.get(`services.${service}`);
+        if (!serviceConfig) {
+            this.logger.error(`Service "${service}" non configure`);
+            throw new HttpException(
+                { statusCode: HttpStatus.INTERNAL_SERVER_ERROR, message: `Service "${service}" non configure` },
+                HttpStatus.INTERNAL_SERVER_ERROR,
+            );
+        }
 
-        const config: AxiosRequestConfig = {
-            method: method as any,
+        const url = `${serviceConfig.url}${path}`;
+        const requestConfig: AxiosRequestConfig = {
+            method,
             url,
-            headers: {
-                ...cleanHeaders,
-                'x-forwarded-by': 'api-gateway',
-            },
-            data: method !== 'GET' && method !== 'HEAD' ? data : undefined,
-            validateStatus: () => true, // Accepter tous les status codes
+            data,
+            headers: { 'Content-Type': 'application/json', ...headers },
+            params,
+            timeout: serviceConfig.timeout,
         };
 
+        this.logger.debug(`Proxy ${method} ${url}`);
+
         try {
-            const response = await firstValueFrom(this.httpService.request(config));
-
-            // Si erreur HTTP (4xx, 5xx), lancer une exception
-            if (response.status >= 400) {
-                throw new HttpException(
-                    response.data?.message || response.data || 'Service error',
-                    response.status,
-                );
-            }
-
-            return response.data;
-        } catch (error) {
-            const err = error as AxiosError;
-            console.error(`❌ Proxy error to ${serviceName}:`, err.message);
-
-            if (err.response) {
-                throw new HttpException(
-                    err.response.data || 'Service error',
-                    err.response.status,
-                );
-            }
-
-            throw new HttpException(
-                `Service ${serviceName} unavailable`,
-                503,
+            const response = await firstValueFrom(
+                this.httpService.request<T>(requestConfig).pipe(
+                    timeout(serviceConfig.timeout),
+                    catchError((error) => {
+                        throw this.handleProxyError(error, service, path);
+                    }),
+                ),
             );
+
+            return (response as AxiosResponse<T>).data;
+        } catch (error) {
+            if (error instanceof HttpException) {
+                throw error;
+            }
+            throw this.handleProxyError(error, service, path);
         }
     }
 
-    private cleanHeaders(headers: any): any {
-        const cleaned = { ...headers };
+    async checkServiceHealth(service: ServiceType): Promise<ServiceHealth> {
+        const startTime = Date.now();
 
-        // Supprimer les headers problématiques
-        delete cleaned['host'];
-        delete cleaned['content-length'];
-        delete cleaned['connection'];
-        delete cleaned['accept-encoding'];
+        try {
+            const serviceConfig = this.configService.get(`services.${service}`);
+            if (!serviceConfig) {
+                return { service, status: 'unhealthy', error: 'Service non configure' };
+            }
 
-        return cleaned;
+            await firstValueFrom(
+                this.httpService.get(`${serviceConfig.url}/health`).pipe(timeout(5000)),
+            );
+
+            return { service, status: 'healthy', responseTime: Date.now() - startTime };
+        } catch (error) {
+            return {
+                service,
+                status: 'unhealthy',
+                responseTime: Date.now() - startTime,
+                error: (error as Error).message,
+            };
+        }
     }
 
-    private getServiceUrl(serviceName: string): string {
-        const urls: Record<string, string> = {
-            'auth-service': this.configService.get<string>('services.auth.url'),
-            'user-service': this.configService.get<string>('services.user.url'),
-        };
+    async checkAllServicesHealth(): Promise<ServiceHealth[]> {
+        const services: ServiceType[] = ['auth', 'user'];
+        return Promise.all(services.map(service => this.checkServiceHealth(service)));
+    }
 
-        return urls[serviceName];
+    private handleProxyError(error: any, service: string, path: string): HttpException {
+        this.logger.error(`Proxy error [${service}] ${path}: ${error.message}`);
+
+        if (error.response) {
+            const status = error.response.status;
+            const responseData = error.response.data;
+            return new HttpException(
+                {
+                    statusCode: status,
+                    message: responseData?.message || error.response.statusText,
+                    error: responseData?.error,
+                    service,
+                    path,
+                },
+                status,
+            );
+        }
+
+        if (error.code === 'ECONNREFUSED') {
+            return new HttpException(
+                { statusCode: HttpStatus.SERVICE_UNAVAILABLE, message: `Service "${service}" indisponible`, service, path },
+                HttpStatus.SERVICE_UNAVAILABLE,
+            );
+        }
+
+        if (error.code === 'ETIMEDOUT' || error.code === 'ECONNABORTED' || error.name === 'TimeoutError') {
+            return new HttpException(
+                { statusCode: HttpStatus.GATEWAY_TIMEOUT, message: `Timeout service "${service}"`, service, path },
+                HttpStatus.GATEWAY_TIMEOUT,
+            );
+        }
+
+        return new HttpException(
+            { statusCode: HttpStatus.INTERNAL_SERVER_ERROR, message: `Erreur service "${service}"`, service, path },
+            HttpStatus.INTERNAL_SERVER_ERROR,
+        );
     }
 }

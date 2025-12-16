@@ -4,12 +4,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
+import { HttpModule } from '@nestjs/axios';  // ✅ AJOUTER
 
 // Schemas
 import { AuthUserSchema } from './persistence/schemas/auth-user.schema';
 import { SessionSchema } from './persistence/schemas/session.schema';
 import { RefreshTokenSchema } from './persistence/schemas/refresh-token.schema';
-import { VerificationCodeSchema } from '../infrastructure/persistence/schemas/verification-code.schema'
+import { VerificationCodeSchema } from './persistence/schemas/verification-code.schema';
 
 // Repositories
 import { TypeOrmAuthUserRepository } from './persistence/repositories/typeorm-auth-user.repository';
@@ -26,6 +27,7 @@ import { GoogleTokenVerifierService } from '../application/services/google-token
 import { GoogleOAuthService } from '../application/services/google-oauth.service';
 import { VerificationCodeService } from '../application/services/verification-code.service';
 import { EmailService } from '../application/services/email.service';
+import { UserServiceClient } from '../application/services/user-service-client.service';  // ✅ AJOUTER
 
 // Use Cases
 import { LoginUseCase } from '../application/use-cases/login.use-case';
@@ -53,6 +55,7 @@ import { RolesGuard } from '../common/guards/roles.guard';
 
 // RabbitMQ
 import { RabbitMQEventModule } from './rabbitmq/rabbitmq-event.module';
+import { UserRoleSyncHandler } from './rabbitmq/user-role-sync.handler';  // ✅ AJOUTER
 
 @Module({
     imports: [
@@ -64,6 +67,10 @@ import { RabbitMQEventModule } from './rabbitmq/rabbitmq-event.module';
             VerificationCodeSchema,
         ]),
         JwtModule.register({}),
+        HttpModule.register({  // ✅ AJOUTER pour UserServiceClient
+            timeout: 5000,
+            maxRedirects: 5,
+        }),
         RabbitMQEventModule,
     ],
     controllers: [AuthController, InternalController],
@@ -96,6 +103,7 @@ import { RabbitMQEventModule } from './rabbitmq/rabbitmq-event.module';
         VerificationCodeService,
         EmailService,
         HealthService,
+        UserServiceClient,  // ✅ AJOUTER
 
         // Use Cases
         LoginUseCase,
@@ -113,6 +121,9 @@ import { RabbitMQEventModule } from './rabbitmq/rabbitmq-event.module';
         JwtStrategy,
         JwtAuthGuard,
         RolesGuard,
+
+        // RabbitMQ Handlers
+        UserRoleSyncHandler,
     ],
     exports: [
         'IAuthUserRepository',
@@ -123,6 +134,7 @@ import { RabbitMQEventModule } from './rabbitmq/rabbitmq-event.module';
         JwtTokenService,
         SessionManagerService,
         VerificationCodeService,
+        UserServiceClient,  // ✅ EXPORTER
     ],
 })
-export class AuthModule { }
+export class AuthModule {}

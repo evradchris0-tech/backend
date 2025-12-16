@@ -4,120 +4,169 @@ import {
     Injectable,
     Inject,
     UnauthorizedException,
-    NotFoundException,
+    Logger,
 } from '@nestjs/common';
-import { v4 as uuidv4 } from 'uuid';
-import { IAuthUserRepository } from '../../domain/repositories/auth-user.repository.interface';
 import { ISessionRepository } from '../../domain/repositories/session.repository.interface';
 import { IRefreshTokenRepository } from '../../domain/repositories/refresh-token.repository.interface';
+import { RefreshTokenEntity } from '../../domain/entities/refresh-token.entity';
 import { JwtTokenService } from '../services/jwt.service';
-import { SessionManagerService } from '../services/session-manager.service';
+import { UserServiceClient } from '../services/user-service-client.service';
 import { RefreshTokenDto } from '../dtos/refresh-token.dto';
 import { AuthResponseDto } from '../dtos/auth-response.dto';
 import { JwtPayload } from '../dtos/jwt-payload.dto';
 
+/**
+ * Use Case: Refresh Token avec récupération du profil mis à jour
+ */
 @Injectable()
 export class RefreshTokenUseCase {
+    private readonly logger = new Logger(RefreshTokenUseCase.name);
+
     constructor(
-        @Inject('IAuthUserRepository')
-        private readonly authUserRepository: IAuthUserRepository,
         @Inject('ISessionRepository')
         private readonly sessionRepository: ISessionRepository,
         @Inject('IRefreshTokenRepository')
         private readonly refreshTokenRepository: IRefreshTokenRepository,
-        private readonly jwtService: JwtTokenService,
-        private readonly sessionManager: SessionManagerService,
+        private readonly jwtTokenService: JwtTokenService,
+        private readonly userServiceClient: UserServiceClient,
     ) { }
 
-    async execute(refreshTokenDto: RefreshTokenDto): Promise<AuthResponseDto> {
-        // 1. Vérifier et décoder le refresh token
+    async execute(
+        refreshTokenDto: RefreshTokenDto,
+    ): Promise<AuthResponseDto> {
+        this.logger.log('Refresh token request');
+
         let payload: JwtPayload;
+
         try {
-            payload = this.jwtService.verifyRefreshToken(refreshTokenDto.refreshToken);
+            // ✅ CORRECTION: Utiliser verifyToken au lieu de verifyRefreshToken
+            payload = await this.jwtTokenService.verifyToken(
+                refreshTokenDto.refreshToken,
+            );
         } catch (error) {
+            this.logger.warn(`Invalid refresh token: ${error.message}`);
             throw new UnauthorizedException('Invalid or expired refresh token');
         }
 
-        // 2. Vérifier que le refresh token existe en base
-        const storedRefreshToken = await this.refreshTokenRepository.findByToken(
+        // Vérifier que le refresh token existe en base
+        const refreshTokenEntity = await this.refreshTokenRepository.findByToken(
             refreshTokenDto.refreshToken,
         );
 
-        if (!storedRefreshToken) {
-            throw new UnauthorizedException('Refresh token not found');
+        if (!refreshTokenEntity) {
+            this.logger.warn('Refresh token not found in database');
+            throw new UnauthorizedException('Invalid refresh token');
         }
 
-        if (storedRefreshToken.isRevoked) {
+        // Vérifier que le token n'est pas révoqué
+        if (refreshTokenEntity.isRevoked) {
+            this.logger.warn(
+                `Attempted to use revoked refresh token: ${refreshTokenEntity.id}`,
+            );
             throw new UnauthorizedException('Refresh token has been revoked');
         }
 
-        if (storedRefreshToken.isExpired()) {
+        // Vérifier que le token n'est pas expiré
+        if (refreshTokenEntity.isExpired()) {
+            this.logger.warn(
+                `Attempted to use expired refresh token: ${refreshTokenEntity.id}`,
+            );
             throw new UnauthorizedException('Refresh token has expired');
         }
 
-        // 3. Vérifier que l'utilisateur existe toujours dans auth_users
-        const user = await this.authUserRepository.findById(payload.userId);
-        if (!user) {
-            throw new NotFoundException('User not found');
+        // Vérifier que la session existe et est active
+        const session = await this.sessionRepository.findById(payload.sessionId);
+
+        if (!session || !session.isActive) {
+            this.logger.warn(`Session not found or inactive: ${payload.sessionId}`);
+            throw new UnauthorizedException('Session is no longer active');
         }
 
-        // 4. Vérifier que le compte est toujours actif
-        if (!user.isActive()) {
-            throw new UnauthorizedException('Account is not active');
+        // ✅ RÉCUPÉRER LE PROFIL À JOUR depuis User-Service
+        let userProfile;
+        try {
+            userProfile = await this.userServiceClient.getUserProfile(payload.userId);
+        } catch (error) {
+            this.logger.error(
+                `Failed to retrieve user profile during token refresh: ${error.message}`,
+            );
+            throw new UnauthorizedException(
+                'Failed to retrieve user profile. Please login again.',
+            );
         }
 
-        // 5. Récupérer la session associée
-        const session = await this.sessionRepository.findById(
-            storedRefreshToken.sessionId,
-        );
-
-        if (!session || session.isRevoked) {
-            throw new UnauthorizedException('Session not found or revoked');
+        // Vérifier que le compte est toujours actif
+        if (userProfile.status !== 'ACTIVE') {
+            this.logger.warn(
+                `Token refresh failed: account not active (${userProfile.email}, status: ${userProfile.status})`,
+            );
+            throw new UnauthorizedException(
+                `Account is ${userProfile.status.toLowerCase()}. Please contact support.`,
+            );
         }
 
-        // 6. Générer de nouveaux tokens
-        const newSessionId = uuidv4();
-        const newJwtPayload: JwtPayload = {
-            userId: user.id,
-            email: user.email,
-            sessionId: newSessionId,
+        // ✅ CONSTRUIRE UN AUTH_USER TEMPORAIRE pour generateAccessToken
+        const authUser = {
+            id: payload.userId,
+            email: userProfile.email,
         };
 
-        const newAccessToken = this.jwtService.generateAccessToken(newJwtPayload);
-        const newRefreshToken = this.jwtService.generateRefreshToken(newJwtPayload);
-        const newAccessTokenExpiration = this.jwtService.getAccessTokenExpiration();
-        const newRefreshTokenExpiration = this.jwtService.getRefreshTokenExpiration();
+        // ✅ GÉNÉRER DE NOUVEAUX TOKENS avec PROFIL MIS À JOUR (AWAIT)
+        const newAccessToken = await this.jwtTokenService.generateAccessToken(
+            authUser as any,
+            session.id,
+        );
 
-        // 7. Révoquer l'ancien refresh token
-        storedRefreshToken.revoke();
-        await this.refreshTokenRepository.update(storedRefreshToken);
+        const newRefreshToken = this.jwtTokenService.generateRefreshToken(
+            payload.userId,
+            session.id,
+        );
 
-        // 8. Mettre à jour la session
-        session.updateTokens(newAccessToken, newRefreshToken, newAccessTokenExpiration);
+        // Calculer les expirations
+        const newAccessTokenExpiration = new Date();
+        newAccessTokenExpiration.setHours(newAccessTokenExpiration.getHours() + 2);
+
+        const newRefreshTokenExpiration = new Date();
+        newRefreshTokenExpiration.setDate(newRefreshTokenExpiration.getDate() + 7);
+
+        // Mettre à jour la session
+        session.updateTokens(
+            newAccessToken,
+            newRefreshToken,
+            newAccessTokenExpiration,
+        );
         await this.sessionRepository.update(session);
 
-        // 9. Créer un nouveau refresh token
-        const newRefreshTokenEntity = this.sessionManager.createRefreshToken(
-            user.id,
+        // Révoquer l'ancien refresh token
+        refreshTokenEntity.revoke();
+        await this.refreshTokenRepository.update(refreshTokenEntity);
+
+        // Sauvegarder le nouveau refresh token
+        const newRefreshTokenEntity = new RefreshTokenEntity(
+            undefined,
+            payload.userId,
             newRefreshToken,
             newRefreshTokenExpiration,
-            session.id,
+            null,
+            null,
         );
         await this.refreshTokenRepository.save(newRefreshTokenEntity);
 
-        // 10. Retourner la réponse
-        const expiresIn = Math.floor(
-            (newAccessTokenExpiration.getTime() - Date.now()) / 1000,
-        );
+        this.logger.log(`✅ Token refreshed for user: ${userProfile.email}`);
 
         return {
             accessToken: newAccessToken,
             refreshToken: newRefreshToken,
             sessionToken: session.id,
-            expiresIn,
+            expiresIn: 7200,
             user: {
-                id: user.id,
-                email: user.email,
+                id: authUser.id,
+                email: userProfile.email,
+                firstName: userProfile.firstName,
+                lastName: userProfile.lastName,
+                role: userProfile.role,
+                status: userProfile.status,
+                emailVerified: userProfile.emailVerified,
             },
         };
     }

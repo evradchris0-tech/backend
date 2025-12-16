@@ -10,8 +10,8 @@ export class RefreshTokenMapper {
             schema.userId,
             schema.token,
             schema.expiresAt,
-            schema.sessionId,
             schema.isRevoked,
+            schema.revokedAt,
         );
     }
 
@@ -21,10 +21,9 @@ export class RefreshTokenMapper {
         schema.userId = entity.userId;
         schema.token = entity.token;
         schema.expiresAt = entity.expiresAt;
-        schema.sessionId = entity.sessionId;
         schema.isRevoked = entity.isRevoked;
+        schema.revokedAt = entity.revokedAt;
         schema.createdAt = entity.createdAt;
-        schema.updatedAt = entity.updatedAt;
         return schema;
     }
 }

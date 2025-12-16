@@ -9,6 +9,10 @@ export enum AuthUserStatus {
     PENDING_EMAIL_VERIFICATION = 'PENDING_EMAIL_VERIFICATION',
 }
 
+/**
+ * Entité AuthUser avec synchronisation du rôle depuis User-Service
+ * Conforme au cahier des charges Section II.1.1
+ */
 export class AuthUserEntity extends BaseEntity {
     private _email: string;
     private _passwordEncrypted: string | null;
@@ -18,6 +22,9 @@ export class AuthUserEntity extends BaseEntity {
     private _lastLoginAt: Date | null;
     private _lockedUntil: Date | null;
     private _googleId: string | null;
+    
+    // ✅ AJOUT: Rôle synchronisé depuis User-Service
+    private _role: string | null;
 
     constructor(
         id: string,
@@ -29,6 +36,7 @@ export class AuthUserEntity extends BaseEntity {
         lastLoginAt: Date | null = null,
         lockedUntil: Date | null = null,
         googleId: string | null = null,
+        role: string | null = null,  // ✅ NOUVEAU PARAMÈTRE
     ) {
         super(id);
         this._email = email;
@@ -39,6 +47,7 @@ export class AuthUserEntity extends BaseEntity {
         this._lastLoginAt = lastLoginAt;
         this._lockedUntil = lockedUntil;
         this._googleId = googleId;
+        this._role = role;
     }
 
     // Getters
@@ -74,6 +83,11 @@ export class AuthUserEntity extends BaseEntity {
         return this._googleId;
     }
 
+    // ✅ NOUVEAU GETTER
+    get role(): string | null {
+        return this._role;
+    }
+
     // Business methods
     isActive(): boolean {
         return this._status === AuthUserStatus.ACTIVE && this._emailVerified;
@@ -106,7 +120,7 @@ export class AuthUserEntity extends BaseEntity {
 
     lock(durationMinutes: number): void {
         const now = new Date();
-        this._lockedUntil = new Date(now.getTime() + durationMinutes * 60000);
+        this._lockedUntil = new Date(now.getTime() + durationMinutes * 60);
         this._status = AuthUserStatus.LOCKED;
         this.touch();
     }
@@ -133,6 +147,11 @@ export class AuthUserEntity extends BaseEntity {
 
     linkGoogleAccount(googleId: string): void {
         this._googleId = googleId;
+        this.touch();
+    }
+
+    syncRole(role: string): void {
+        this._role = role;
         this.touch();
     }
 }

@@ -22,4 +22,5 @@ const databaseConfig: TypeOrmModuleOptions = {
     },
 };
 
+
 export default databaseConfig;

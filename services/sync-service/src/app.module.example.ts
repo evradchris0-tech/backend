@@ -15,6 +15,7 @@ import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 import { OperationHistoryService } from './application/services/operation-history.service';
 import { PostgresHistoryService } from './application/services/postgres-history.service';
 
+
 // Controllers
 import { HistoryController } from './infrastructure/http/controllers/history.controller';
 

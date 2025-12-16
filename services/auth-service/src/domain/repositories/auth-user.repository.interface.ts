@@ -6,6 +6,7 @@ export interface IAuthUserRepository {
     findById(id: string): Promise<AuthUserEntity | null>;
     findByEmail(email: string): Promise<AuthUserEntity | null>;
     findByGoogleId(googleId: string): Promise<AuthUserEntity | null>;
-    save(user: AuthUserEntity): Promise<void>;
-    update(user: AuthUserEntity): Promise<void>;
+    save(authUser: AuthUserEntity): Promise<AuthUserEntity>;
+    update(authUser: AuthUserEntity): Promise<void>;
+    delete(id: string): Promise<void>;
 }
