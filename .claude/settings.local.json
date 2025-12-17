@@ -8,7 +8,12 @@
       "Bash(test:*)",
       "Bash(chmod:*)",
       "Bash(node scripts/generate-secrets.js:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(dir:*)",
+      "Bash(echo:*)",
+      "Bash(npx tsc:*)",
+      "Bash(psql:*)",
+      "Bash(grep:*)"
     ]
   }
 }

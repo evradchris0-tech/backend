@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: equipement-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: immo360_equipement
+    ports:
+      - '5434:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - equipement-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3.12-management-alpine
+    container_name: equipement-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - equipement-network
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Equipement Service
+  equipement-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: equipement-service
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: immo360_equipement
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    ports:
+      - '3004:3004'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - equipement-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+
+networks:
+  equipement-network:
+    driver: bridge

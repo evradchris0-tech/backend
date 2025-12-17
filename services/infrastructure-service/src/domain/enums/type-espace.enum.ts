@@ -75,3 +75,34 @@ export const TYPES_CHAMBRES: TypeEspace[] = [
 export function estUneChambre(type: TypeEspace): boolean {
     return TYPES_CHAMBRES.includes(type);
 }
+/**
+ * Types d'espaces considerés comme des bureaux
+ */
+export const TYPES_BUREAUX: TypeEspace[] = [
+    TypeEspace.BUREAU_INDIVIDUEL,
+    TypeEspace.BUREAU_PARTAGE,
+];
+
+/**
+ * Types d'espaces considerés comme des salles
+ */
+export const TYPES_SALLES: TypeEspace[] = [
+    TypeEspace.SALLE_CLASSE,
+    TypeEspace.AMPHITHEATRE,
+    TypeEspace.SALLE_REUNION,
+    TypeEspace.LABORATOIRE,
+];
+
+/**
+ * Verifie si un type d'espace est un bureau
+ */
+export function estUnBureau(type: TypeEspace): boolean {
+    return TYPES_BUREAUX.includes(type);
+}
+
+/**
+ * Verifie si un type d'espace est une salle
+ */
+export function estUneSalle(type: TypeEspace): boolean {
+    return TYPES_SALLES.includes(type);
+}

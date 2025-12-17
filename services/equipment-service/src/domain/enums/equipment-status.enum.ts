@@ -1,8 +1,0 @@
-export enum EquipmentStatus {
-    IN_STOCK = 'IN_STOCK',
-    ASSIGNED = 'ASSIGNED',
-    IN_TRANSIT = 'IN_TRANSIT',
-    MAINTENANCE = 'MAINTENANCE',
-    OUT_OF_SERVICE = 'OUT_OF_SERVICE',
-    LOST = 'LOST',
-}
